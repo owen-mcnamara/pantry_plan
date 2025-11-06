@@ -39,3 +39,6 @@ __screenshots__/
 node_modules
 dist
 .firebase
+
+# Secrets
+src/firebaseConfig.js
