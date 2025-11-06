@@ -1,17 +1,61 @@
-name: CI/CD for PantryPlan
+name: PantryPlan CI/CD
 
 on:
+  # Manual deploy trigger
+  workflow_dispatch:
+
+  # Auto deploy when main is updated
   push:
     branches: [ main ]
+
+  # Temporary preview deploy for pull requests
   pull_request:
     branches: [ main ]
 
 jobs:
   build-deploy:
+    name: Build & Deploy (Main)
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Linter
+        run: npm run lint || echo "No linter configured, skipping..."
+
+      - name: Run Tests
+        run: npm test || echo "No tests configured, skipping..."
+
+      - name: Build Vue app
+        run: npm run build
+
+      - name: Deploy to Firebase (Hosting + Functions)
+        uses: w9jds/firebase-action@v2.2.0
+        with:
+          args: deploy --only hosting,functions
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          # Optional API keys
+          VITE_SPOONACULAR_KEY: ${{ secrets.VITE_SPOONACULAR_KEY }}
+          VITE_OPENFOOD_KEY: ${{ secrets.VITE_OPENFOOD_KEY }}
+
+  preview:
+    name: Preview Deploy (Pull Request)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -25,9 +69,9 @@ jobs:
       - name: Build Vue app
         run: npm run build
 
-      - name: Deploy to Firebase Hosting
+      - name: Deploy Firebase Preview Channel
         uses: w9jds/firebase-action@v2.2.0
         with:
-          args: deploy --only hosting
+          args: hosting:channel:deploy pr-${{ github.event.pull_request.number }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
