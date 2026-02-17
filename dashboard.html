@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PantryPlan Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2 class="logo"><i class="fa-solid fa-apple-whole"></i> PantryPlan</h2>
+
+            <nav>
+                <a href="dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a>
+                <a href="recipes.html"><i class="fa-solid fa-bowl-food"></i> Recipes</a>
+                <a href="settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+
+            <div class="top-bar">
+                <h1>Good morning, Lorcan.</h1>
+                <button class="add-btn"><i class="fa-solid fa-plus"></i> Add Item</button>
+            </div>
+
+            <h2 class="sub">3 Items Expiring Soon.</h2>
+
+            <!-- Expiring Items -->
+            <div class="items">
+                <div class="item-card">
+                    <div class="item-info">
+                        <img src="https://tse2.explicit.bing.net/th/id/OIP.fZNgOMSZxtep3EQD_jHIYAHaKW?rs=1&pid=ImgDetMain&o=7&rm=3" />
+                        <div>
+                            <h3>Avocado</h3>
+                            <p>1/12/2025 (1 day)</p>
+                        </div>
+                    </div>
+                    <span class="time warn">03:40</span>
+                </div>
+
+                <div class="item-card">
+                    <div class="item-info">
+                        <img src="https://images.rawpixel.com/image_png_800/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTAyL3JtNjIxLWVsZW1lbnQtMTgwLnBuZw.png" />
+                        <div>
+                            <h3>Milk</h3>
+                            <p>30/11/2025 (0 days)</p>
+                        </div>
+                    </div>
+                    <span class="time okay">00:25</span>
+                </div>
+
+                <div class="item-card">
+                    <div class="item-info">
+                        <img src="https://tse2.mm.bing.net/th/id/OIP.GveSk09dceWE3JzLPUN_tAHaHa?rs=1&pid=ImgDetMain&o=7&rm=3" />
+                        <div>
+                            <h3>Spinach</h3>
+                            <p>1/12/2025 (1 day)</p>
+                        </div>
+                    </div>
+                    <span class="time warn">00:35</span>
+                </div>
+            </div>
+
+            <!-- Graph placeholder -->
+            <div class="graph-card">
+                <h3>Weekly Waste Savings</h3>
+                <div class="graph-placeholder">Graph goes here</div>
+            </div>
+
+        </main>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,175 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+body {
+    background: #edf2f7;
+}
+
+/* Layout container */
+.container {
+    display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background: white;
+    height: 100vh;
+    padding: 25px;
+    border-right: 1px solid #e0e0e0;
+}
+
+.logo {
+    margin-bottom: 30px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.sidebar nav a {
+    display: block;
+    padding: 14px 0;
+    font-size: 16px;
+    color: #555;
+    cursor: pointer;
+    transition: 0.2s;
+    text-decoration: none;
+}
+
+.sidebar nav a i {
+    margin-right: 10px;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+    color: #2c7a7b;
+    font-weight: bold;
+}
+
+/* Main content */
+.main {
+    flex: 1;
+    padding: 40px;
+}
+
+.sub {
+    color: #6b7280;
+    margin-top: 4px;
+    margin-bottom: 25px;
+}
+
+/* Settings cards */
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.card h2 {
+    margin-bottom: 20px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Setting rows */
+.setting-row {
+    margin-bottom: 18px;
+}
+
+.setting-row label {
+    display: block;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.setting-row input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+}
+
+/* Small button */
+.btn-small {
+    padding: 8px 14px;
+    background: #2f855a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* Toggle switches */
+.toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+}
+
+.switch input {
+    display: none;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    border-radius: 25px;
+    transition: .3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .3s;
+}
+
+input:checked + .slider {
+    background-color: #2f855a;
+}
+
+input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
+/* Danger Zone */
+.card.danger {
+    border-left: 5px solid #e53e3e;
+}
+
+.delete-btn {
+    padding: 10px 20px;
+    background: #e53e3e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+}

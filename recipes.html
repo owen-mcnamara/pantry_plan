@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PantryPlan Recipes</title>
+    <link rel="stylesheet" href="recipes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <h2 class="logo"><i class="fa-solid fa-apple-whole"></i> PantryPlan</h2>
+
+        <nav>
+            <a href="dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a>
+            <a href="recipes.html" class="active"><i class="fa-solid fa-bowl-food"></i> Recipes</a>
+            <a href="settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <h1>Recipe Suggestions</h1>
+        <p class="sub">Recipes based on the ingredients you already have.</p>
+
+        <!-- Search Bar -->
+        <div class="search-bar">
+            <input type="text" placeholder="Search by ingredient…">
+            <button><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+        <!-- Recipe Cards -->
+        <div class="recipes-grid">
+
+            <!-- Recipe 1 -->
+            <div class="recipe-card">
+                <img src="https://cdn-icons-png.flaticon.com/512/2974/2974396.png">
+                <h3>Avocado Toast</h3>
+                <p class="desc">A quick breakfast recipe using fresh avocados and bread.</p>
+                <ul class="ingredients">
+                    <li>Avocado</li>
+                    <li>Bread</li>
+                    <li>Lime</li>
+                    <li>Salt & Pepper</li>
+                </ul>
+                <button class="view-btn">View Recipe</button>
+            </div>
+
+            <!-- Recipe 2 -->
+            <div class="recipe-card">
+                <img src="https://cdn-icons-png.flaticon.com/512/857/857681.png">
+                <h3>Spaghetti Alfredo</h3>
+                <p class="desc">Creamy pasta made with milk, garlic, and parmesan.</p>
+                <ul class="ingredients">
+                    <li>Milk</li>
+                    <li>Garlic</li>
+                    <li>Pasta</li>
+                    <li>Butter</li>
+                </ul>
+                <button class="view-btn">View Recipe</button>
+            </div>
+
+            <!-- Recipe 3 -->
+            <div class="recipe-card">
+                <img src="https://cdn-icons-png.flaticon.com/512/1046/1046784.png">
+                <h3>Spinach Omelette</h3>
+                <p class="desc">A protein-rich meal using eggs, spinach, and cheese.</p>
+                <ul class="ingredients">
+                    <li>Spinach</li>
+                    <li>Eggs</li>
+                    <li>Cheese</li>
+                </ul>
+                <button class="view-btn">View Recipe</button>
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+</body>
+</html>
