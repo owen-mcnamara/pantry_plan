@@ -42,3 +42,7 @@ dist
 
 # Secrets
 src/firebaseConfig.js
+
+context/pantryplan.xml
+
+src/services/auth.js
