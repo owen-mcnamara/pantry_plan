@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { auth } from '../firebaseConfig';
+import { auth } from '../firebaseConfig.js';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 // Emit event to parent component to switch views
