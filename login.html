@@ -15,15 +15,15 @@
             <h1>Welcome Back To The Pantry</h1>
             <p class="subtitle">Login to continue</p>
 
-            <form>
+            <form action="/login" method="POST">
                 <div class="input-group">
                     <i class="fa-solid fa-envelope"></i>
-                    <input type="email" placeholder="Email" required>
+                    <input type="email" name="email" placeholder="Email" required>
                 </div>
 
                 <div class="input-group">
                     <i class="fa-solid fa-lock"></i>
-                    <input type="password" placeholder="Password" required>
+                    <input type="password" name="name" placeholder="Password" required>
                 </div>
 
                 <button type="submit" class="login-btn">Login</button>
