@@ -39,7 +39,7 @@ jobs:
       - name: Build Vue app
         run: npm run build
 
-      - name: Deploy to Firebase (Hosting + Functions)
+      - name: Deploy to Firebase (Hosting)
         uses: w9jds/firebase-action@v2.2.0
         with:
           args: deploy --only hosting 
