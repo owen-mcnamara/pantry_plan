@@ -29,7 +29,6 @@
 import { auth } from '../firebaseConfig.js';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
-// Emit event to parent component to switch views
 const emit = defineEmits(['switchView']);
 
 async function loginUser() {
@@ -37,9 +36,8 @@ async function loginUser() {
   const password = document.getElementById('password').value;
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
-    alert('Login successful!');
-    // TODO: Redirect to dashboard
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    emit('switchView', 'dashboard', userCredential.user.uid);
   } catch (error) {
     alert('Error: ' + error.message);
   }

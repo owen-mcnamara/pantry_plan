@@ -2,21 +2,22 @@
 import { ref } from 'vue';
 import LoginView from './pages/LoginView.vue';
 import RegisterView from './pages/RegisterView.vue';
+import DashboardView from './pages/DashboardView.vue';
 
-// Track which view to show: 'login' or 'register'
 const currentView = ref('login');
+const loggedInUserId = ref(null);
 
-// Function to switch between views
-function switchView(viewName) {
+function switchView(viewName, userId = null) {
   currentView.value = viewName;
+  if (userId) loggedInUserId.value = userId;
 }
 </script>
 
 <template>
   <div id="app">
-    <!-- Show LoginView or RegisterView based on currentView -->
     <LoginView v-if="currentView === 'login'" @switchView="switchView" />
     <RegisterView v-if="currentView === 'register'" @switchView="switchView" />
+    <DashboardView v-if="currentView === 'dashboard'" :userId="loggedInUserId" />
   </div>
 </template>
 
