@@ -39,3 +39,11 @@ __screenshots__/
 node_modules
 dist
 .firebase
+
+# Secrets
+.env
+#src/firebaseConfig.js
+
+context/pantryplan.xml
+
+src/services/auth.js
