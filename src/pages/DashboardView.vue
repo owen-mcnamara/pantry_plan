@@ -7,6 +7,7 @@
         <a href="#" class="active">🏠 Dashboard</a>
         <a href="#">🍜 Recipes</a>
         <a href="#">⚙️ Settings</a>
+        <button class="logout-btn" @click="logout">🚪 Logout</button>
       </nav>
     </aside>
 
@@ -64,6 +65,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
+import { auth } from '../firebaseConfig.js';
+import { signOut } from 'firebase/auth';
+
+const emit = defineEmits(['switchView']);
+
 const products = ref([]);
 const loading = ref(true);
 const showModal = ref(false);
@@ -102,6 +108,12 @@ async function addItem() {
   showModal.value = false;
   await fetchProducts();
 }
+
+async function logout() {
+  await signOut(auth);
+  emit('switchView', 'login');
+}
+
 </script>
 
 <style scoped>
@@ -333,4 +345,22 @@ body {
 .submit-btn:hover {
     background: #276749;
 }
+
+.logout-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 0;
+    font-size: 16px;
+    color: #e53e3e;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    margin-top: 20px;
+}
+
+.logout-btn:hover {
+    font-weight: bold;
+}
+
 </style>

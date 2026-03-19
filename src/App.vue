@@ -17,7 +17,7 @@ function switchView(viewName, userId = null) {
   <div id="app">
     <LoginView v-if="currentView === 'login'" @switchView="switchView" />
     <RegisterView v-if="currentView === 'register'" @switchView="switchView" />
-    <DashboardView v-if="currentView === 'dashboard'" :userId="loggedInUserId" />
+    <DashboardView v-if="currentView === 'dashboard'" :userId="loggedInUserId" @switchView="switchView" />
   </div>
 </template>
 
