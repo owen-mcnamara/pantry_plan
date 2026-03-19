@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PantryPlan Dashboard</title>
     <link rel="stylesheet" href="dashboard.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" href="/favicon.ico">
 </head>
 <body>
 
@@ -77,6 +77,44 @@
         </main>
 
     </div>
+<!-- Add Item Modal -->
+<div id="addItemModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Add New Item</h2>
+        <form id="addItemForm">
+            <div class="form-group">
+                <label for="itemName">Item Name:</label>
+                <input type="text" id="itemName" name="itemName" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="expiryDate">Expiry Date:</label>
+                <input type="date" id="expiryDate" name="expiryDate" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="quantity">Quantity:</label>
+                <input type="number" id="quantity" name="quantity" min="1" value="1">
+            </div>
+            
+            <div class="form-group">
+                <label for="category">Category:</label>
+                <select id="category" name="category">
+                    <option value="vegetables">Vegetables</option>
+                    <option value="dairy">Dairy</option>
+                    <option value="fruits">Fruits</option>
+                    <option value="meat">Meat</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="submit-btn">Add Item</button>
+        </form>
+    </div>
+</div>
+
+<script src="dashboard.js"></script>
 
 </body>
 </html>
