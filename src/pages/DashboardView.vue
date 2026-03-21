@@ -32,6 +32,7 @@
             </div>
           </div>
           <span class="time warn">{{ product.status }}</span>
+          <button class="delete-btn" @click="deleteItem(product.id)">🗑️</button>
         </div>
       </div>
 
@@ -109,6 +110,15 @@ async function addItem() {
   await fetchProducts();
 }
 
+async function deleteItem(productId) {
+  await fetch('https://deleteproduct-moat6vqvca-uc.a.run.app', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productId })
+  });
+  await fetchProducts();
+}
+
 async function logout() {
   await signOut(auth);
   emit('switchView', 'login');
@@ -181,6 +191,19 @@ body {
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.item-card:hover .delete-btn {
+    opacity: 1;
 }
 
 .items {
