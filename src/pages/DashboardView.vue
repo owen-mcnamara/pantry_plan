@@ -65,27 +65,32 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-
 import { auth } from '../firebaseConfig.js';
-import { signOut } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 
-const emit = defineEmits(['switchView']);
-
+const router = useRouter();
 const products = ref([]);
 const loading = ref(true);
 const showModal = ref(false);
 const newItem = ref({ name: '', expiryDate: '' });
+const userId = ref(null);
 
-const props = defineProps(['userId']);
-
-onMounted(async () => {
-  await fetchProducts();
+onMounted(() => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      userId.value = user.uid;
+      fetchProducts();
+    } else {
+      router.push('/login');
+    }
+  });
 });
 
 async function fetchProducts() {
   loading.value = true;
   const res = await fetch(
-    `https://getproducts-moat6vqvca-uc.a.run.app?userId=${props.userId}`
+    `https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`
   );
   const data = await res.json();
   products.value = data.products;
@@ -97,7 +102,7 @@ async function addItem() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      userId: props.userId,
+      userId: userId.value,
       name: newItem.value.name,
       expiryDate: newItem.value.expiryDate,
       expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
@@ -121,9 +126,8 @@ async function deleteItem(productId) {
 
 async function logout() {
   await signOut(auth);
-  emit('switchView', 'login');
+  router.push('/login');
 }
-
 </script>
 
 <style scoped>
@@ -191,19 +195,6 @@ body {
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
-}
-
-.delete-btn {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.item-card:hover .delete-btn {
-    opacity: 1;
 }
 
 .items {
@@ -386,4 +377,16 @@ body {
     font-weight: bold;
 }
 
+.delete-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.item-card:hover .delete-btn {
+    opacity: 1;
+}
 </style>
