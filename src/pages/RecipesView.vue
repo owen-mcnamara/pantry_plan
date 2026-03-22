@@ -1,37 +1,41 @@
 <template>
-  <div class="container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <h2 class="logo">🍎 PantryPlan</h2>
-      <nav>
-        <a href="/dashboard">🏠 Dashboard</a>
-        <a href="/recipes" class="active">🍜 Recipes</a>
-        <a href="/settings">⚙️ Settings</a>
-        <button class="logout-btn" @click="logout">🚪 Logout</button>
-      </nav>
-    </aside>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <h2 class="logo">🍎 PantryPlan</h2>
+            <nav>
+                <a href="/dashboard">🏠 Dashboard</a>
+                <a href="/recipes" class="active">🍜 Recipes</a>
+                <a href="/settings">⚙️ Settings</a>
+                <button class="logout-btn" @click="logout">🚪 Logout</button>
+            </nav>
+        </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="top-bar">
-        <h1>Recipe Suggestions</h1>
-      </div>
+        <!-- Main Content -->
+        <main class="main">
+            <div class="top-bar">
+                <h1>Recipe Suggestions</h1>
+            </div>
 
-      <p class="sub">Fresh ideas based on your pantry items.</p>
+            <p class="sub">Fresh ideas based on your pantry items.</p>
 
-      <p v-if="loading">Loading...</p>
+            <p v-if="loading">Loading...</p>
 
-      <div class="recipes" v-else>
-        <div v-if="recipes.length === 0" class="empty-state">
-          <p>No recipes found. Add some items to your pantry first!</p>
-        </div>
-        <div class="recipe-card" v-for="recipe in recipes" :key="recipe.id">
-          <h3>{{ recipe.title }}</h3>
-          <p>Uses: {{ recipe.ingredients }}</p>
-        </div>
-      </div>
-    </main>
-  </div>
+            <div class="recipes" v-else>
+                <div v-if="recipes.length === 0" class="empty-state">
+                    <p>No recipes found. Add some items to your pantry first!</p>
+                </div>
+                <div class="recipe-card" v-for="recipe in recipes" :key="recipe.id">
+                    <img :src="recipe.image" :alt="recipe.title" class="recipe-img" />
+                    <div>
+                        <h3>{{ recipe.title }}</h3>
+                        <p>Uses: {{ recipe.ingredients }}</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
 </template>
 
 <script setup>
@@ -44,29 +48,55 @@ const router = useRouter();
 const loading = ref(true);
 const recipes = ref([]);
 
+const userId = ref(null);
+
 onMounted(() => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      loadRecipes();
-    } else {
-      router.push('/login');
-    }
-  });
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            userId.value = user.uid;
+            loadRecipes();
+        } else {
+            router.push('/login');
+        }
+    });
 });
 
-function loadRecipes() {
-  // Placeholder recipes for now - will connect to Spoonacular API later
-  recipes.value = [
-    { id: 1, title: 'Avocado Toast', ingredients: 'Avocado, Bread' },
-    { id: 2, title: 'Milk Pancakes', ingredients: 'Milk, Eggs, Flour' },
-    { id: 3, title: 'Spinach Pasta', ingredients: 'Spinach, Pasta, Garlic' },
-  ];
-  loading.value = false;
+async function loadRecipes() {
+    loading.value = true;
+
+    // First get the user's pantry items
+    const res = await fetch(
+        `https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`
+    );
+    const data = await res.json();
+
+    // Extract ingredient names from pantry
+    const ingredients = data.products.map(p => p.name).join(',');
+
+    if (!ingredients) {
+        loading.value = false;
+        return;
+    }
+
+    // Fetch recipes from Spoonacular
+    const spoonacularRes = await fetch(
+        `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${ingredients}&number=5&apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
+    );
+    const spoonacularData = await spoonacularRes.json();
+
+    recipes.value = spoonacularData.map(recipe => ({
+        id: recipe.id,
+        title: recipe.title,
+        image: recipe.image,
+        ingredients: recipe.usedIngredients.map(i => i.name).join(', ')
+    }));
+
+    loading.value = false;
 }
 
 async function logout() {
-  await signOut(auth);
-  router.push('/login');
+    await signOut(auth);
+    router.push('/login');
 }
 </script>
 
@@ -136,11 +166,16 @@ async function logout() {
 }
 
 .recipe-card {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.recipe-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    object-fit: cover;
 }
 
 .recipe-card:hover {

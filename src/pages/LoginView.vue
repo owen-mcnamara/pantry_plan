@@ -22,13 +22,16 @@
       Don't have an account? 
       <button @click="switchToRegister" type="button">Register here</button>
     </p>
+    <p class="switch-auth">
+      <button @click="forgotPassword" type="button">Forgot password?</button>
+    </p>
   </div>
 </template>
 
 <script setup>
 import { auth } from '../firebaseConfig.js';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'vue-router';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 
 const router = useRouter();
 
@@ -46,6 +49,22 @@ async function loginUser() {
 
 function switchToRegister() {
   router.push('/register');
+}
+
+async function forgotPassword() {
+  const email = document.getElementById('email').value;
+  
+  if (!email) {
+    alert('Please enter your email address first.');
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email);
+    alert('Password reset email sent! Check your inbox.');
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
 }
 </script>
 
