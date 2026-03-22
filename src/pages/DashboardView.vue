@@ -5,7 +5,7 @@
       <h2 class="logo">🍎 PantryPlan</h2>
       <nav>
         <a href="#" class="active">🏠 Dashboard</a>
-        <a href="#">🍜 Recipes</a>
+        <a href="/recipes">🍜 Recipes</a>
         <a href="#">⚙️ Settings</a>
         <button class="logout-btn" @click="logout">🚪 Logout</button>
       </nav>
@@ -31,7 +31,9 @@
               <p>Expires: {{ product.expiryDate }}</p>
             </div>
           </div>
-          <span class="time warn">{{ product.status }}</span>
+          <span :class="['time', expiryClass(product.expiryDate)]">
+            {{ daysUntilExpiry(product.expiryDate) }}
+          </span>
           <button class="delete-btn" @click="deleteItem(product.id)">🗑️</button>
         </div>
       </div>
@@ -127,6 +129,26 @@ async function deleteItem(productId) {
 async function logout() {
   await signOut(auth);
   router.push('/login');
+}
+
+function daysUntilExpiry(expiryDate) {
+  const today = new Date();
+  const expiry = new Date(expiryDate);
+  const diffTime = expiry - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'Expired';
+  if (diffDays === 0) return 'Expires today';
+  if (diffDays === 1) return '1 day left';
+  return `${diffDays} days left`;
+}
+
+function expiryClass(expiryDate) {
+  const today = new Date();
+  const expiry = new Date(expiryDate);
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'critical';
+  if (diffDays <= 2) return 'warn';
+  return 'okay';
 }
 </script>
 
