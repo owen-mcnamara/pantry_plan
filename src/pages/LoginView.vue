@@ -28,23 +28,24 @@
 <script setup>
 import { auth } from '../firebaseConfig.js';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 
-const emit = defineEmits(['switchView']);
+const router = useRouter();
 
 async function loginUser() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    emit('switchView', 'dashboard', userCredential.user.uid);
+    await signInWithEmailAndPassword(auth, email, password);
+    router.push('/dashboard');
   } catch (error) {
     alert('Error: ' + error.message);
   }
 }
 
 function switchToRegister() {
-  emit('switchView', 'register');
+  router.push('/register');
 }
 </script>
 

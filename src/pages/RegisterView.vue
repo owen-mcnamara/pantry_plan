@@ -26,11 +26,11 @@
 </template>
 
 <script setup>
-import { auth } from '../firebaseConfig';
+import { auth } from '../firebaseConfig.js';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 
-// Emit event to parent component to switch views
-const emit = defineEmits(['switchView']);
+const router = useRouter();
 
 async function registerUser() {
   const email = document.getElementById('email').value;
@@ -38,16 +38,14 @@ async function registerUser() {
 
   try {
     await createUserWithEmailAndPassword(auth, email, password);
-    alert('Account created successfully!');
-    // Automatically switch to login or dashboard after registration
-    emit('switchView', 'login');
+    router.push('/login');
   } catch (error) {
     alert('Error: ' + error.message);
   }
 }
 
 function switchToLogin() {
-  emit('switchView', 'login');
+  router.push('/login');
 }
 </script>
 
