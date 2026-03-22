@@ -25,7 +25,7 @@
                 <div v-if="recipes.length === 0" class="empty-state">
                     <p>No recipes found. Add some items to your pantry first!</p>
                 </div>
-                <div class="recipe-card" v-for="recipe in recipes" :key="recipe.id">
+                <div class="recipe-card" v-for="recipe in recipes" :key="recipe.id" @click="viewRecipe(recipe.id)">
                     <img :src="recipe.image" :alt="recipe.title" class="recipe-img" />
                     <div>
                         <h3>{{ recipe.title }}</h3>
@@ -97,6 +97,10 @@ async function loadRecipes() {
 async function logout() {
     await signOut(auth);
     router.push('/login');
+}
+
+function viewRecipe(id) {
+    router.push(`/recipes/${id}`);
 }
 </script>
 
