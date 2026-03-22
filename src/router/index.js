@@ -3,22 +3,16 @@ import LoginView from '../pages/LoginView.vue'
 import RegisterView from '../pages/RegisterView.vue'
 import DashboardView from '../pages/DashboardView.vue'
 import RecipesView from '../pages/RecipesView.vue'
+import SettingsView from '../pages/SettingsView.vue'
 import { auth } from '../firebaseConfig.js'
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: LoginView },
   { path: '/register', component: RegisterView },
-  { 
-    path: '/dashboard', 
-    component: DashboardView,
-    meta: { requiresAuth: true }
-  },
-  { 
-    path: '/recipes', 
-    component: RecipesView,
-    meta: { requiresAuth: true }
-  }
+  { path: '/dashboard', component: DashboardView, meta: { requiresAuth: true }},
+  { path: '/recipes', component: RecipesView, meta: { requiresAuth: true }},
+  { path: '/settings', component: SettingsView, meta: { requiresAuth: true }}
 ]
 
 const router = createRouter({

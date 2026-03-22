@@ -6,7 +6,7 @@
       <nav>
         <a href="#" class="active">🏠 Dashboard</a>
         <a href="/recipes">🍜 Recipes</a>
-        <a href="#">⚙️ Settings</a>
+        <a href="/settings">⚙️ Settings</a>
         <button class="logout-btn" @click="logout">🚪 Logout</button>
       </nav>
     </aside>
