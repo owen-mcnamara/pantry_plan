@@ -1,25 +1,15 @@
 <template>
   <div class="auth-container">
     <h1>Register</h1>
-    
+
     <form @submit.prevent="registerUser">
-      <input 
-        id="email" 
-        type="email" 
-        placeholder="Email" 
-        required 
-      />
-      <input 
-        id="password" 
-        type="password" 
-        placeholder="Password" 
-        required 
-      />
+      <input id="email" type="email" placeholder="Email" required />
+      <input id="password" type="password" placeholder="Password" required />
       <button type="submit">Register</button>
     </form>
 
     <p class="switch-auth">
-      Already have an account? 
+      Already have an account?
       <button @click="switchToLogin" type="button">Login here</button>
     </p>
   </div>
@@ -28,20 +18,34 @@
 <script setup>
 import { auth } from '../firebaseConfig.js';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const db = getFirestore();
 
 async function registerUser() {
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
   try {
-    await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Save user to Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      id: user.uid,
+      role: 'user',
+      createdAt: new Date().toISOString()
+    });
+
     router.push('/login');
   } catch (error) {
     alert('Error: ' + error.message);
   }
+
+
 }
 
 function switchToLogin() {
