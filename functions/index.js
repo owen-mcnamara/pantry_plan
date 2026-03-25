@@ -384,6 +384,93 @@ PantryPlan`
   }
 );
 
+exports.getInsightsSummary = onRequest(
+  { cors: true },
+  async (request, response) => {
+    try {
+      const { userId } = request.query;
+      if (!userId) {
+        response.status(400).json({ success: false, message: "Missing userId" });
+        return;
+      }
+
+      const snapshot = await db
+        .collection("products")
+        .where("userId", "==", userId)
+        .get();
+
+      const allItems = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // ----- Top Wasted (last 30 days) -----
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const wastedIn30Days = allItems.filter((item) => {
+        if (item.status !== "wasted" || !item.wastedAt) return false;
+        const wastedDate = new Date(item.wastedAt);
+        return wastedDate >= thirtyDaysAgo && wastedDate <= now;
+      });
+
+      const wasteCountByName = {};
+      wastedIn30Days.forEach((item) => {
+        const key = (item.name || "Unknown").trim().toLowerCase();
+        if (!wasteCountByName[key]) {
+          wasteCountByName[key] = { name: item.name || "Unknown", count: 0 };
+        }
+        wasteCountByName[key].count += 1;
+      });
+
+      const topWasted = Object.values(wasteCountByName)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // ----- Expiring Soon (active only) -----
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const activeItems = allItems.filter((item) => item.status === "active");
+
+      const expiringList = activeItems
+        .map((item) => {
+          if (!item.expiryDate) return null;
+          const expiry = new Date(item.expiryDate);
+          expiry.setHours(0, 0, 0, 0);
+
+          const diffMs = expiry - startOfToday;
+          const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+          return {
+            id: item.id,
+            name: item.name,
+            expiryDate: item.expiryDate,
+            daysLeft
+          };
+        })
+        .filter((item) => item && item.daysLeft >= 0 && item.daysLeft <= 7)
+        .sort((a, b) => a.daysLeft - b.daysLeft);
+
+      const in1Day = expiringList.filter((i) => i.daysLeft <= 1).length;
+      const in3Days = expiringList.filter((i) => i.daysLeft <= 3).length;
+      const in7Days = expiringList.filter((i) => i.daysLeft <= 7).length;
+
+      response.json({
+        success: true,
+        topWasted,
+        expiringSoon: {
+          in1Day,
+          in3Days,
+          in7Days,
+          items: expiringList.slice(0, 6)
+        }
+      });
+    } catch (error) {
+      console.error("getInsightsSummary error:", error);
+      response.status(500).json({ success: false, message: "Internal error" });
+    }
+  }
+);
+
 /**
  * Helpers
  */

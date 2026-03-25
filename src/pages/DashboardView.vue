@@ -2,13 +2,13 @@
   <div class="container">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <h2 class="logo">🍎 PantryPlan</h2>
+      <h2 class="logo">PantryPlan</h2>
       <nav>
-        <a href="/dashboard" class="active">🏠 Dashboard</a>
-        <a href="/recipes">🍜 Recipes</a>
-        <a href="/settings">⚙️ Settings</a>
-        <a href="/history">🕘 History</a>
-        <button class="logout-btn" @click="logout">🚪 Logout</button>
+        <a href="/dashboard" class="active">Dashboard</a>
+        <a href="/recipes">Recipes</a>
+        <a href="/settings">Settings</a>
+        <a href="/history">History</a>
+        <button class="logout-btn" @click="logout">Logout</button>
       </nav>
     </aside>
 
@@ -39,13 +39,53 @@
           </span>
 
           <div class="actions">
-            <button class="use-btn" @click="markUsed(product.id)">✅ Use</button>
-            <button class="waste-btn" @click="confirmWaste(product.id)">🗑️ Waste</button>
-            <button class="delete-btn" @click="deleteItem(product.id)">❌ Delete</button>
+            <button class="use-btn" @click="markUsed(product.id)">Use</button>
+            <button class="waste-btn" @click="confirmWaste(product.id)">Waste</button>
+            <button class="delete-btn" @click="deleteItem(product.id)">Delete</button>
           </div>
         </div>
       </div>
 
+      <!-- Insights -->
+      <div class="insights-grid">
+        <section class="insight-card">
+          <div class="insight-header">
+            <h3>Top Wasted Items (30 Days)</h3>
+          </div>
+
+          <ul v-if="insights.topWasted?.length" class="insight-list">
+            <li v-for="(item, idx) in insights.topWasted" :key="item.name + idx">
+              <span class="left">{{ idx + 1 }}. {{ item.name }}</span>
+              <span class="pill danger">{{ item.count }}</span>
+            </li>
+          </ul>
+
+          <p v-else class="muted">No wasted items in last 30 days.</p>
+        </section>
+
+        <section class="insight-card">
+          <div class="insight-header">
+            <h3>Expiring Soon</h3>
+          </div>
+
+          <div class="pill-row">
+            <span class="pill danger">1 day: {{ insights.expiringSoon?.in1Day || 0 }}</span>
+            <span class="pill warn">3 days: {{ insights.expiringSoon?.in3Days || 0 }}</span>
+            <span class="pill info">7 days: {{ insights.expiringSoon?.in7Days || 0 }}</span>
+          </div>
+
+          <ul v-if="insights.expiringSoon?.items?.length" class="insight-list">
+            <li v-for="item in insights.expiringSoon.items" :key="item.id">
+              <span class="left">{{ item.name }}</span>
+              <span class="muted">{{ item.daysLeft }} day(s)</span>
+            </li>
+          </ul>
+
+          <p v-else class="muted">No active items expiring in next 7 days.</p>
+        </section>
+      </div>
+
+      <!-- Graph -->
       <div class="graph-card">
         <h3>Weekly Waste Insights (Last 4 Weeks)</h3>
         <p>Waste Rate: <strong>{{ wasteRatePercent }}</strong></p>
@@ -54,6 +94,7 @@
         <div v-else class="graph-placeholder">No analytics data yet.</div>
       </div>
 
+      <!-- Undo Toast -->
       <div v-if="undo.visible" class="undo-toast">
         Marked as {{ undo.action }}.
         <button @click="undoLastAction">Undo</button>
@@ -85,11 +126,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { auth } from '../firebaseConfig.js';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'vue-router';
-import { Bar } from 'vue-chartjs';
+import { ref, onMounted, computed } from 'vue'
+import { auth } from '../firebaseConfig.js'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { useRouter } from 'vue-router'
+import { Bar } from 'vue-chartjs'
 import {
   Chart as ChartJS,
   Title,
@@ -98,19 +139,23 @@ import {
   BarElement,
   CategoryScale,
   LinearScale
-} from 'chart.js';
+} from 'chart.js'
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
-const router = useRouter();
-const products = ref([]);
-const loading = ref(true);
-const showModal = ref(false);
-const newItem = ref({ name: '', expiryDate: '' });
-const userId = ref(null);
+const router = useRouter()
+const products = ref([])
+const loading = ref(true)
+const showModal = ref(false)
+const newItem = ref({ name: '', expiryDate: '' })
+const userId = ref(null)
 
-const analytics = ref({ labels: [], used: [], wasted: [], wasteRate: 0 });
-const undo = ref({ visible: false, productId: null, action: '', timer: null });
+const analytics = ref({ labels: [], used: [], wasted: [], wasteRate: 0 })
+const undo = ref({ visible: false, productId: null, action: '', timer: null })
+const insights = ref({
+  topWasted: [],
+  expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] }
+})
 
 const chartData = computed(() => ({
   labels: analytics.value.labels,
@@ -118,7 +163,7 @@ const chartData = computed(() => ({
     { label: 'Used', data: analytics.value.used, backgroundColor: '#2f855a' },
     { label: 'Wasted', data: analytics.value.wasted, backgroundColor: '#e53e3e' }
   ]
-}));
+}))
 
 const chartOptions = {
   responsive: true,
@@ -126,42 +171,56 @@ const chartOptions = {
   plugins: {
     legend: { position: 'top' }
   }
-};
+}
 
 const wasteRatePercent = computed(() =>
   `${Math.round((analytics.value.wasteRate || 0) * 100)}%`
-);
+)
 
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      userId.value = user.uid;
-      await Promise.all([fetchProducts(), fetchAnalytics()]);
-    } else {
-      router.push('/login');
+    if (!user) {
+      router.push('/login')
+      return
     }
-  });
-});
+
+    userId.value = user.uid
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  })
+})
 
 async function fetchProducts() {
-  loading.value = true;
+  loading.value = true
   try {
-    const res = await fetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`);
-    const data = await res.json();
-    products.value = data.products || [];
+    const res = await fetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const data = await res.json()
+    products.value = data.products || []
   } finally {
-    loading.value = false;
+    loading.value = false
+  }
+}
+
+async function fetchInsights() {
+  try {
+    const res = await fetch(`https://getinsightssummary-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const data = await res.json()
+
+    insights.value = data.success
+      ? data
+      : { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
+  } catch {
+    insights.value = { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
   }
 }
 
 async function fetchAnalytics() {
-  const res = await fetch(
-    `https://getweeklyanalytics-moat6vqvca-uc.a.run.app?userId=${userId.value}&weeks=4`
-  );
-  const data = await res.json();
-  analytics.value = data.success
-    ? data
-    : { labels: [], used: [], wasted: [], wasteRate: 0 };
+  try {
+    const res = await fetch(`https://getweeklyanalytics-moat6vqvca-uc.a.run.app?userId=${userId.value}&weeks=4`)
+    const data = await res.json()
+    analytics.value = data.success ? data : { labels: [], used: [], wasted: [], wasteRate: 0 }
+  } catch {
+    analytics.value = { labels: [], used: [], wasted: [], wasteRate: 0 }
+  }
 }
 
 async function addItem() {
@@ -175,11 +234,11 @@ async function addItem() {
       expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
       status: 'active'
     })
-  });
+  })
 
-  newItem.value = { name: '', expiryDate: '' };
-  showModal.value = false;
-  await Promise.all([fetchProducts(), fetchAnalytics()]);
+  newItem.value = { name: '', expiryDate: '' }
+  showModal.value = false
+  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
 async function deleteItem(productId) {
@@ -187,17 +246,18 @@ async function deleteItem(productId) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId })
-  });
-  await Promise.all([fetchProducts(), fetchAnalytics()]);
+  })
+
+  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
 async function markUsed(productId) {
-  await updateStatus(productId, 'used');
+  await updateStatus(productId, 'used')
 }
 
 async function confirmWaste(productId) {
-  if (!confirm('Mark this item as wasted?')) return;
-  await updateStatus(productId, 'wasted');
+  if (!confirm('Mark this item as wasted?')) return
+  await updateStatus(productId, 'wasted')
 }
 
 async function updateStatus(productId, status) {
@@ -205,62 +265,61 @@ async function updateStatus(productId, status) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId, status })
-  });
+  })
 
-  showUndo(productId, status);
-  await Promise.all([fetchProducts(), fetchAnalytics()]);
+  showUndo(productId, status)
+  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
 function showUndo(productId, action) {
-  if (undo.value.timer) clearTimeout(undo.value.timer);
+  if (undo.value.timer) clearTimeout(undo.value.timer)
 
-  undo.value.visible = true;
-  undo.value.productId = productId;
-  undo.value.action = action;
+  undo.value.visible = true
+  undo.value.productId = productId
+  undo.value.action = action
   undo.value.timer = setTimeout(() => {
-    undo.value.visible = false;
-  }, 8000);
+    undo.value.visible = false
+  }, 8000)
 }
 
 async function undoLastAction() {
-  if (!undo.value.productId) return;
+  if (!undo.value.productId) return
 
   await fetch('https://undoproductstatus-moat6vqvca-uc.a.run.app', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ productId: undo.value.productId })
-  });
+  })
 
-  clearTimeout(undo.value.timer);
-  undo.value.visible = false;
-  await Promise.all([fetchProducts(), fetchAnalytics()]);
+  clearTimeout(undo.value.timer)
+  undo.value.visible = false
+  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
 async function logout() {
-  await signOut(auth);
-  router.push('/login');
+  await signOut(auth)
+  router.push('/login')
 }
 
 function daysUntilExpiry(expiryDate) {
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-  const diffTime = expiry - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
 
-  if (diffDays < 0) return 'Expired';
-  if (diffDays === 0) return 'Expires today';
-  if (diffDays === 1) return '1 day left';
-  return `${diffDays} days left`;
+  if (diffDays < 0) return 'Expired'
+  if (diffDays === 0) return 'Expires today'
+  if (diffDays === 1) return '1 day left'
+  return `${diffDays} days left`
 }
 
 function expiryClass(expiryDate) {
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
 
-  if (diffDays < 0) return 'critical';
-  if (diffDays <= 2) return 'warn';
-  return 'okay';
+  if (diffDays < 0) return 'critical'
+  if (diffDays <= 2) return 'warn'
+  return 'okay'
 }
 </script>
 
@@ -299,7 +358,6 @@ body {
   padding: 14px 0;
   font-size: 16px;
   color: #555;
-  cursor: pointer;
   text-decoration: none;
   transition: 0.2s;
 }
@@ -344,7 +402,6 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  position: relative;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -354,14 +411,12 @@ body {
 }
 
 .item-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
   min-width: 220px;
 }
 
 .item-card h3 {
   font-size: 18px;
+  margin-bottom: 4px;
 }
 
 .item-card p {
@@ -418,6 +473,84 @@ body {
   color: #4a5568;
 }
 
+/* Insights */
+.insights-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.insight-card {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.insight-header h3 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.insight-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.insight-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.insight-list li:last-child {
+  border-bottom: none;
+}
+
+.left {
+  color: #111827;
+  font-weight: 500;
+}
+
+.pill-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pill.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pill.warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pill.info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+/* Graph */
 .graph-card {
   margin-top: 30px;
   background: white;
@@ -452,6 +585,7 @@ body {
   margin-top: 20px;
 }
 
+/* Modal */
 .modal {
   position: fixed;
   z-index: 1000;
@@ -554,6 +688,7 @@ body {
   font-weight: bold;
 }
 
+/* Undo */
 .undo-toast {
   position: fixed;
   right: 24px;
@@ -575,5 +710,37 @@ body {
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+
+  .main {
+    padding: 20px;
+  }
+
+  .item-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 </style>
