@@ -2,12 +2,13 @@
   <div class="container">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <h2 class="logo">🍎 PantryPlan</h2>
+      <h2 class="logo">PantryPlan</h2>
       <nav>
-        <a href="/dashboard">🏠 Dashboard</a>
-        <a href="/recipes">🍜 Recipes</a>
-        <a href="/settings" class="active">⚙️ Settings</a>
-        <button class="logout-btn" @click="logout">🚪 Logout</button>
+        <a href="/dashboard" class="pp-nav-link active">Dashboard</a>
+        <a href="/recipes" class="pp-nav-link">Recipes</a>
+        <a href="/history" class="pp-nav-link">History</a>
+        <a href="/settings" class="pp-nav-link">Settings</a>
+        <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
       </nav>
     </aside>
 

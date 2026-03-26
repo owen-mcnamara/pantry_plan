@@ -11,6 +11,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
     "firebase-admin": "^13.7.0",
     "firebase-functions": "^7.1.1",
     "nodemailer": "^8.0.3"

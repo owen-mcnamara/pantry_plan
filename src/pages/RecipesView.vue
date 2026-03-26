@@ -1,225 +1,112 @@
 <template>
-    <div class="container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <h2 class="logo">🍎 PantryPlan</h2>
-            <nav>
-                <a href="/dashboard">🏠 Dashboard</a>
-                <a href="/recipes" class="active">🍜 Recipes</a>
-                <a href="/settings">⚙️ Settings</a>
-                <button class="logout-btn" @click="logout">🚪 Logout</button>
-            </nav>
-        </aside>
+  <div class="container-fluid pp-shell">
+    <div class="row g-0">
+      <!-- Sidebar -->
+      <aside class="col-12 col-md-3 col-xl-2 pp-sidebar">
+        <div class="pp-logo">PantryPlan</div>
+        <nav class="d-flex flex-column gap-1">
+          <a href="/dashboard" class="pp-nav-link">Dashboard</a>
+          <a href="/recipes" class="pp-nav-link active">Recipes</a>
+          <a href="/history" class="pp-nav-link">History</a>
+          <a href="/settings" class="pp-nav-link">Settings</a>
+          <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
+        </nav>
+      </aside>
 
-        <!-- Main Content -->
-        <main class="main">
-            <div class="top-bar">
-                <h1>Recipe Suggestions</h1>
-            </div>
+      <!-- Main -->
+      <main class="col-12 col-md-9 col-xl-10 p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="h3 mb-0">Recipe Suggestions</h1>
+        </div>
+        <p class="text-muted mb-4">Fresh ideas based on your pantry items.</p>
 
-            <p class="sub">Fresh ideas based on your pantry items.</p>
+        <p v-if="loading" class="text-muted">Loading...</p>
 
-            <p v-if="loading">Loading...</p>
+        <div v-else>
+          <div v-if="recipes.length === 0" class="pp-card p-4 text-muted">
+            No recipes found. Add some items to your pantry first.
+          </div>
 
-            <div class="recipes" v-else>
-                <div v-if="recipes.length === 0" class="empty-state">
-                    <p>No recipes found. Add some items to your pantry first!</p>
+          <TransitionGroup v-else name="fade-slide" tag="div" class="row g-3">
+            <div class="col-12 col-lg-6" v-for="recipe in recipes" :key="recipe.id">
+              <div class="pp-card pp-hover p-3 h-100 d-flex gap-3 align-items-start" role="button" @click="viewRecipe(recipe.id)">
+                <img :src="recipe.image" :alt="recipe.title" class="rounded" style="width: 96px; height: 96px; object-fit: cover;" />
+                <div>
+                  <h3 class="h6 mb-1">{{ recipe.title }}</h3>
+                  <p class="mb-0 text-muted">
+                    Uses: {{ recipe.ingredients || 'No matched ingredients listed' }}
+                  </p>
                 </div>
-                <div class="recipe-card" v-for="recipe in recipes" :key="recipe.id" @click="viewRecipe(recipe.id)">
-                    <img :src="recipe.image" :alt="recipe.title" class="recipe-img" />
-                    <div>
-                        <h3>{{ recipe.title }}</h3>
-                        <p>Uses: {{ recipe.ingredients }}</p>
-                    </div>
-                </div>
-
+              </div>
             </div>
-        </main>
+          </TransitionGroup>
+        </div>
+      </main>
     </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { auth } from '../firebaseConfig.js';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { auth } from '../firebaseConfig.js'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { useRouter } from 'vue-router'
 
-const router = useRouter();
-const loading = ref(true);
-const recipes = ref([]);
-
-const userId = ref(null);
+const router = useRouter()
+const loading = ref(true)
+const recipes = ref([])
+const userId = ref(null)
 
 onMounted(() => {
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            userId.value = user.uid;
-            loadRecipes();
-        } else {
-            router.push('/login');
-        }
-    });
-});
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return router.push('/login')
+    userId.value = user.uid
+    await loadRecipes()
+  })
+})
 
 async function loadRecipes() {
-    loading.value = true;
+  loading.value = true
 
-    // First get the user's pantry items
-    const res = await fetch(
-        `https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`
-    );
-    const data = await res.json();
+  try {
+    // 1) Get active pantry products
+    const pantryRes = await fetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const pantryData = await pantryRes.json()
+    const products = pantryData.products || []
 
-    // Extract ingredient names from pantry
-    const ingredients = data.products.map(p => p.name).join(',');
+    const ingredients = products.map((p) => p.name).filter(Boolean).join(',')
 
     if (!ingredients) {
-        loading.value = false;
-        return;
+      recipes.value = []
+      return
     }
 
-    // Fetch recipes from Spoonacular
+    // 2) Spoonacular call
     const spoonacularRes = await fetch(
-        `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${ingredients}&number=5&apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
-    );
-    const spoonacularData = await spoonacularRes.json();
+      `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(ingredients)}&number=8&apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
+    )
+    const spoonacularData = await spoonacularRes.json()
 
-    recipes.value = spoonacularData.map(recipe => ({
-        id: recipe.id,
-        title: recipe.title,
-        image: recipe.image,
-        ingredients: recipe.usedIngredients.map(i => i.name).join(', ')
-    }));
-
-    loading.value = false;
-}
-
-async function logout() {
-    await signOut(auth);
-    router.push('/login');
+    recipes.value = (spoonacularData || []).map((recipe) => ({
+      id: recipe.id,
+      title: recipe.title,
+      image: recipe.image,
+      ingredients: (recipe.usedIngredients || []).map((i) => i.name).join(', ')
+    }))
+  } catch (error) {
+    console.error('loadRecipes error:', error)
+    recipes.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 function viewRecipe(id) {
-    router.push(`/recipes/${id}`);
+  router.push(`/recipes/${id}`)
+}
+
+async function logout() {
+  await signOut(auth)
+  router.push('/login')
 }
 </script>
-
-<style scoped>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Inter", sans-serif;
-}
-
-.container {
-    display: flex;
-}
-
-.sidebar {
-    width: 250px;
-    background: white;
-    height: 100vh;
-    padding: 25px;
-    border-right: 1px solid #e0e0e0;
-}
-
-.logo {
-    margin-bottom: 30px;
-    font-size: 22px;
-    font-weight: 600;
-}
-
-.sidebar nav a {
-    display: block;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #555;
-    cursor: pointer;
-    text-decoration: none;
-    transition: 0.2s;
-}
-
-.sidebar nav a:hover,
-.sidebar nav a.active {
-    color: #2c7a7b;
-    font-weight: bold;
-}
-
-.main {
-    flex: 1;
-    padding: 40px;
-    background: #edf2f7;
-    min-height: 100vh;
-}
-
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.sub {
-    margin-top: 10px;
-    color: #718096;
-    margin-bottom: 20px;
-}
-
-.recipes {
-    margin-top: 20px;
-}
-
-.recipe-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
-
-.recipe-img {
-    width: 100px;
-    height: 100px;
-    border-radius: 10px;
-    object-fit: cover;
-}
-
-.recipe-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.recipe-card h3 {
-    font-size: 18px;
-    margin-bottom: 8px;
-    color: #2d3748;
-}
-
-.recipe-card p {
-    font-size: 14px;
-    color: #777;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: #94a3b8;
-    background: white;
-    border-radius: 12px;
-}
-
-.logout-btn {
-    display: block;
-    width: 100%;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #e53e3e;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    margin-top: 20px;
-}
-
-.logout-btn:hover {
-    font-weight: bold;
-}
-</style>

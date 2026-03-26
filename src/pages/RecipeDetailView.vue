@@ -3,15 +3,16 @@
     <aside class="sidebar">
       <h2 class="logo">PantryPlan</h2>
       <nav>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/recipes" class="active">Recipes</a>
-        <a href="/settings">Settings</a>
-        <button class="logout-btn" @click="logout">Logout</button>
+        <a href="/dashboard" class="pp-nav-link">Dashboard</a>
+        <a href="/recipes" class="pp-nav-link active">Recipes</a>
+        <a href="/history" class="pp-nav-link">History</a>
+        <a href="/settings" class="pp-nav-link">Settings</a>
+        <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
       </nav>
     </aside>
 
     <main class="main">
-      <button class="back-btn" @click="router.push('/recipes')">← Back to Recipes</button>
+      <button class="back-btn" @click="router.push('/recipes')">Back to Recipes</button>
 
       <div v-if="loading">Loading...</div>
 
