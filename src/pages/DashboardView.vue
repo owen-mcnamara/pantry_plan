@@ -29,7 +29,7 @@
 
           <TransitionGroup name="fade-slide" tag="div">
             <div class="pp-card pp-hover p-3 mb-3 d-flex justify-content-between align-items-center"
-                 v-for="product in products" :key="product.id">
+                v-for="product in products" :key="product.id">
               <div>
                 <h3 class="h6 mb-1">{{ product.name }}</h3>
                 <p class="mb-1 text-muted">Expires: {{ product.expiryDate }}</p>
@@ -45,7 +45,7 @@
           </TransitionGroup>
         </div>
 
-        <div class="pp-card p-4 mt-4" style="min-height:320px;">
+        <div class="pp-card p-4 mt-4" style="height:500px;">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h5 mb-0">Weekly Waste Insights</h2>
             <span class="badge text-bg-light">Waste Rate: {{ wasteRatePercent }}</span>
