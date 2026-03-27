@@ -1,171 +1,200 @@
 <template>
-  <div class="container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <h2 class="logo">PantryPlan</h2>
-      <nav>
-        <a href="/dashboard" class="active">Dashboard</a>
-        <a href="/recipes">Recipes</a>
-        <a href="/settings">Settings</a>
-        <a href="/history">History</a>
-        <button class="logout-btn" @click="logout">Logout</button>
-      </nav>
-    </aside>
+  <div class="container-fluid pp-shell">
+    <div class="row g-0">
+      <!-- Sidebar -->
+      <aside class="col-12 col-md-3 col-xl-2 pp-sidebar p-3 p-md-4">
+        <div class="pp-logo mb-3">PantryPlan</div>
+        <nav class="d-flex flex-column gap-1">
+          <a href="/dashboard" class="pp-nav-link active">Dashboard</a>
+          <a href="/recipes" class="pp-nav-link">Recipes</a>
+          <a href="/history" class="pp-nav-link">History</a>
+          <a href="/settings" class="pp-nav-link">Settings</a>
+          <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
+        </nav>
+      </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="top-bar">
-        <h1>My Pantry</h1>
-        <button class="add-btn" @click="showModal = true">+ Add Item</button>
-      </div>
-
-      <p v-if="loading">Loading...</p>
-
-      <div class="items" v-else>
-        <div v-if="products.length === 0" class="empty-state">
-          <p>No active items in your pantry yet!</p>
+      <!-- Main -->
+      <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="h3 mb-0">My Pantry</h1>
+          <button class="btn btn-primary" @click="showModal = true">Add Item</button>
         </div>
 
-        <div class="item-card" v-for="product in products" :key="product.id">
-          <div class="item-info">
-            <div>
-              <h3>{{ product.name }}</h3>
-              <p>{{ formatQty(product.quantity, product.unit) }} • Expires: {{ product.expiryDate }}</p>
+        <p v-if="loading" class="text-muted">Loading...</p>
+
+        <div v-else>
+          <div v-if="products.length === 0" class="pp-card p-4 text-muted mb-3">
+            No active items in your pantry yet.
+          </div>
+
+          <TransitionGroup name="fade-slide" tag="div">
+            <div
+              v-for="product in products"
+              :key="product.id"
+              class="pp-card pp-hover p-3 mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3"
+            >
+              <div>
+                <h3 class="h6 mb-1">{{ product.name }}</h3>
+                <p class="mb-1 text-muted">
+                  {{ formatQty(product.quantity, product.unit) }} • Expires: {{ product.expiryDate }}
+                </p>
+                <small :class="expiryTextClass(product.expiryDate)">{{ daysUntilExpiry(product.expiryDate) }}</small>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-outline-primary" @click="openEditModal(product)">Edit</button>
+                <button class="btn btn-sm btn-outline-success" @click="markUsed(product.id)">Use</button>
+                <button class="btn btn-sm btn-outline-danger" @click="confirmWaste(product.id)">Waste</button>
+                <button class="btn btn-sm btn-outline-secondary" @click="deleteItem(product.id)">Delete</button>
+              </div>
             </div>
+          </TransitionGroup>
+        </div>
+
+        <!-- Insights -->
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-xl-6">
+            <section class="pp-card p-3 p-md-4 h-100">
+              <h2 class="h5 mb-3">Top Wasted Items (30 Days)</h2>
+              <ul v-if="insights.topWasted?.length" class="list-group list-group-flush">
+                <li
+                  v-for="(item, idx) in insights.topWasted"
+                  :key="item.name + idx"
+                  class="list-group-item d-flex justify-content-between align-items-center px-0"
+                >
+                  <span>{{ idx + 1 }}. {{ item.name }}</span>
+                  <span class="badge text-bg-danger rounded-pill">{{ item.count }}</span>
+                </li>
+              </ul>
+              <p v-else class="text-muted mb-0">No wasted items in last 30 days.</p>
+            </section>
           </div>
 
-          <span :class="['time', expiryClass(product.expiryDate)]">
-            {{ daysUntilExpiry(product.expiryDate) }}
-          </span>
+          <div class="col-12 col-xl-6">
+            <section class="pp-card p-3 p-md-4 h-100">
+              <h2 class="h5 mb-3">Expiring Soon</h2>
 
-          <div class="actions">
-            <button class="edit-btn" @click="openEditModal(product)">Edit</button>
-            <button class="use-btn" @click="markUsed(product.id)">Use</button>
-            <button class="waste-btn" @click="confirmWaste(product.id)">Waste</button>
-            <button class="delete-btn" @click="deleteItem(product.id)">Delete</button>
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge text-bg-danger">1 day: {{ insights.expiringSoon?.in1Day || 0 }}</span>
+                <span class="badge text-bg-warning">3 days: {{ insights.expiringSoon?.in3Days || 0 }}</span>
+                <span class="badge text-bg-info">7 days: {{ insights.expiringSoon?.in7Days || 0 }}</span>
+              </div>
+
+              <ul v-if="insights.expiringSoon?.items?.length" class="list-group list-group-flush">
+                <li
+                  v-for="item in insights.expiringSoon.items"
+                  :key="item.id"
+                  class="list-group-item d-flex justify-content-between align-items-center px-0"
+                >
+                  <span>{{ item.name }}</span>
+                  <small class="text-muted">{{ item.daysLeft }} day(s)</small>
+                </li>
+              </ul>
+
+              <p v-else class="text-muted mb-0">No active items expiring in next 7 days.</p>
+            </section>
           </div>
         </div>
-      </div>
 
-      <!-- Insights -->
-      <div class="insights-grid">
-        <section class="insight-card">
-          <div class="insight-header">
-            <h3>Top Wasted Items (30 Days)</h3>
+        <!-- Graph -->
+        <div class="pp-card p-3 p-md-4 mt-4" style="height: 500px;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Weekly Waste Insights (Last 4 Weeks)</h2>
+            <span class="badge text-bg-light">Waste Rate: {{ wasteRatePercent }}</span>
           </div>
 
-          <ul v-if="insights.topWasted?.length" class="insight-list">
-            <li v-for="(item, idx) in insights.topWasted" :key="item.name + idx">
-              <span class="left">{{ idx + 1 }}. {{ item.name }}</span>
-              <span class="pill danger">{{ item.count }}</span>
-            </li>
-          </ul>
+          <Bar v-if="analytics.labels.length" :data="chartData" :options="chartOptions" />
+          <div v-else class="text-muted">No analytics data yet.</div>
+        </div>
 
-          <p v-else class="muted">No wasted items in last 30 days.</p>
-        </section>
-
-        <section class="insight-card">
-          <div class="insight-header">
-            <h3>Expiring Soon</h3>
-          </div>
-
-          <div class="pill-row">
-            <span class="pill danger">1 day: {{ insights.expiringSoon?.in1Day || 0 }}</span>
-            <span class="pill warn">3 days: {{ insights.expiringSoon?.in3Days || 0 }}</span>
-            <span class="pill info">7 days: {{ insights.expiringSoon?.in7Days || 0 }}</span>
-          </div>
-
-          <ul v-if="insights.expiringSoon?.items?.length" class="insight-list">
-            <li v-for="item in insights.expiringSoon.items" :key="item.id">
-              <span class="left">{{ item.name }}</span>
-              <span class="muted">{{ item.daysLeft }} day(s)</span>
-            </li>
-          </ul>
-
-          <p v-else class="muted">No active items expiring in next 7 days.</p>
-        </section>
-      </div>
-
-      <!-- Graph -->
-      <div class="graph-card">
-        <h3>Weekly Waste Insights (Last 4 Weeks)</h3>
-        <p>Waste Rate: <strong>{{ wasteRatePercent }}</strong></p>
-
-        <Bar v-if="analytics.labels.length" :data="chartData" :options="chartOptions" />
-        <div v-else class="graph-placeholder">No analytics data yet.</div>
-      </div>
-
-      <!-- Undo Toast -->
-      <div v-if="undo.visible" class="undo-toast">
-        Marked as {{ undo.action }}.
-        <button @click="undoLastAction">Undo</button>
-      </div>
-    </main>
+        <!-- Undo Toast -->
+        <div
+          v-if="undo.visible"
+          class="position-fixed bottom-0 end-0 m-4 p-3 rounded bg-dark text-white d-flex gap-2 align-items-center"
+          style="z-index: 1200;"
+        >
+          Marked as {{ undo.action }}.
+          <button class="btn btn-sm btn-light" @click="undoLastAction">Undo</button>
+        </div>
+      </main>
+    </div>
 
     <!-- Edit Modal -->
-    <div class="modal" v-if="showEditModal">
-      <div class="modal-content">
-        <span class="close" @click="showEditModal = false">&times;</span>
-        <h2>Edit Item</h2>
-
-        <form @submit.prevent="saveEdit">
-          <div class="form-group">
-            <label>Item Name:</label>
-            <input type="text" v-model="editForm.name" required />
+    <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Edit Item</h5>
+            <button type="button" class="btn-close" @click="showEditModal = false"></button>
           </div>
+          <div class="modal-body">
+            <form @submit.prevent="saveEdit">
+              <div class="mb-3">
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-control" v-model="editForm.name" required />
+              </div>
 
-          <div class="form-group">
-            <label>Expiry Date:</label>
-            <input type="date" v-model="editForm.expiryDate" required />
+              <div class="mb-3">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" class="form-control" v-model="editForm.expiryDate" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Quantity</label>
+                <input type="number" min="0" step="0.1" class="form-control" v-model.number="editForm.quantity" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Unit</label>
+                <input type="text" maxlength="20" class="form-control" v-model="editForm.unit" required />
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </form>
           </div>
-
-          <div class="form-group">
-            <label>Quantity:</label>
-            <input type="number" min="0" step="0.1" v-model.number="editForm.quantity" required />
-          </div>
-
-          <div class="form-group">
-            <label>Unit:</label>
-            <input type="text" maxlength="20" v-model="editForm.unit" required />
-          </div>
-
-          <button type="submit" class="submit-btn">Save Changes</button>
-        </form>
+        </div>
       </div>
     </div>
+    <div v-if="showEditModal" class="modal-backdrop fade show"></div>
 
     <!-- Add Item Modal -->
-    <div class="modal" v-if="showModal">
-      <div class="modal-content">
-        <span class="close" @click="showModal = false">&times;</span>
-        <h2>Add New Item</h2>
-
-        <form @submit.prevent="addItem">
-          <div class="form-group">
-            <label>Item Name:</label>
-            <input type="text" v-model="newItem.name" required />
-            <p class="muted">{{ formatQty(newItem.quantity, newItem.unit) }} • Expires: {{ newItem.expiryDate || '-' }}</p>
+    <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Add New Item</h5>
+            <button type="button" class="btn-close" @click="showModal = false"></button>
           </div>
+          <div class="modal-body">
+            <form @submit.prevent="addItem">
+              <div class="mb-3">
+                <label class="form-label">Item Name</label>
+                <input class="form-control" type="text" v-model="newItem.name" required />
+              </div>
 
-          <div class="form-group">
-            <label>Quantity:</label>
-            <input type="number" min="0" step="0.1" v-model.number="newItem.quantity" required />
+              <div class="mb-3">
+                <label class="form-label">Quantity</label>
+                <input class="form-control" type="number" min="0" step="0.1" v-model.number="newItem.quantity" required />
+                <small class="text-muted">{{ formatQty(newItem.quantity, newItem.unit) }} • Expires: {{ newItem.expiryDate || '-' }}</small>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Unit</label>
+                <input class="form-control" type="text" maxlength="20" v-model="newItem.unit" placeholder="item, kg, L..." required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Expiry Date</label>
+                <input class="form-control" type="date" v-model="newItem.expiryDate" required />
+              </div>
+
+              <button class="btn btn-primary w-100" type="submit">Add Item</button>
+            </form>
           </div>
-
-          <div class="form-group">
-            <label>Unit:</label>
-            <input type="text" maxlength="20" v-model="newItem.unit" placeholder="item, kg, L..." required />
-          </div>
-
-          <div class="form-group">
-            <label>Expiry Date:</label>
-            <input type="date" v-model="newItem.expiryDate" required />
-          </div>
-
-          <button type="submit" class="submit-btn">Add Item</button>
-        </form>
+        </div>
       </div>
     </div>
+    <div v-if="showModal" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
@@ -175,15 +204,7 @@ import { auth } from '../firebaseConfig.js'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 import { Bar } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
-  BarElement,
-  CategoryScale,
-  LinearScale
-} from 'chart.js'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
@@ -208,22 +229,18 @@ const insights = ref({
 const chartData = computed(() => ({
   labels: analytics.value.labels,
   datasets: [
-    { label: 'Used', data: analytics.value.used, backgroundColor: '#2f855a' },
-    { label: 'Wasted', data: analytics.value.wasted, backgroundColor: '#e53e3e' }
+    { label: 'Used', data: analytics.value.used, backgroundColor: '#16a34a' },
+    { label: 'Wasted', data: analytics.value.wasted, backgroundColor: '#dc2626' }
   ]
 }))
 
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: {
-    legend: { position: 'top' }
-  }
+  plugins: { legend: { position: 'top' } }
 }
 
-const wasteRatePercent = computed(() =>
-  `${Math.round((analytics.value.wasteRate || 0) * 100)}%`
-)
+const wasteRatePercent = computed(() => `${Math.round((analytics.value.wasteRate || 0) * 100)}%`)
 
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
@@ -385,11 +402,6 @@ async function saveEdit() {
   await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
-async function logout() {
-  await signOut(auth)
-  router.push('/login')
-}
-
 function daysUntilExpiry(expiryDate) {
   const today = new Date()
   const expiry = new Date(expiryDate)
@@ -401,441 +413,85 @@ function daysUntilExpiry(expiryDate) {
   return `${diffDays} days left`
 }
 
-function expiryClass(expiryDate) {
+function expiryTextClass(expiryDate) {
   const today = new Date()
   const expiry = new Date(expiryDate)
   const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
 
-  if (diffDays < 0) return 'critical'
-  if (diffDays <= 2) return 'warn'
-  return 'okay'
+  if (diffDays < 0) return 'text-danger'
+  if (diffDays <= 2) return 'text-warning'
+  return 'text-success'
+}
+
+async function logout() {
+  await signOut(auth)
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Inter", sans-serif;
-}
-
-body {
-  background: #edf2f7;
-}
-
-.container {
-  display: flex;
-}
-
-.sidebar {
-  width: 250px;
-  background: white;
-  height: 100vh;
-  padding: 25px;
-  border-right: 1px solid #e0e0e0;
-}
-
-.logo {
-  margin-bottom: 30px;
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.sidebar nav a {
-  display: block;
-  padding: 14px 0;
-  font-size: 16px;
-  color: #555;
-  text-decoration: none;
-  transition: 0.2s;
-}
-
-.sidebar nav a:hover,
-.sidebar nav a.active {
-  color: #2c7a7b;
-  font-weight: bold;
-}
-
-.main {
-  flex: 1;
-  padding: 40px;
-}
-
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.add-btn {
-  padding: 10px 20px;
-  background: #2f855a;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.items {
-  margin-top: 20px;
-}
-
-.item-card {
-  background: white;
-  padding: 15px 20px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 18px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.item-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.item-info {
-  min-width: 220px;
-}
-
-.item-card h3 {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-.item-card p {
-  font-size: 14px;
-  color: #777;
-}
-
-.time {
-  font-size: 16px;
-  font-weight: bold;
-  min-width: 110px;
-}
-
-.critical {
-  color: #c53030;
-}
-
-.warn {
-  color: #e53e3e;
-}
-
-.okay {
-  color: #dd6b20;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-.edit-btn,
-.use-btn,
-.waste-btn,
-.delete-btn {
-  border: none;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.edit-btn {
-  background: #ebf8ff;
-  color: #2b6cb0;
-}
-
-.use-btn {
-  background: #e6fffa;
-  color: #2f855a;
-}
-
-.waste-btn {
-  background: #fff5f5;
-  color: #c53030;
-}
-
-.delete-btn {
-  background: #edf2f7;
-  color: #4a5568;
-}
-
-/* Insights */
-.insights-grid {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.insight-card {
-  background: white;
-  border-radius: 14px;
-  padding: 18px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.insight-header h3 {
-  margin: 0 0 12px;
-  font-size: 20px;
-  color: #1f2937;
-}
-
-.insight-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.insight-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #eef2f7;
-}
-
-.insight-list li:last-child {
-  border-bottom: none;
-}
-
-.left {
-  color: #111827;
-  font-weight: 500;
-}
-
-.pill-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.pill {
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.pill.danger {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.pill.warn {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.pill.info {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.muted {
-  color: #6b7280;
-}
-
-/* Graph */
-.graph-card {
-  margin-top: 30px;
-  background: white;
-  padding: 25px;
-  border-radius: 16px;
-  min-height: 320px;
-}
-
-.graph-card canvas {
-  max-height: 240px;
-}
-
-.graph-placeholder {
-  margin-top: 20px;
-  height: 250px;
-  background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-  border-radius: 12px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #718096;
-  font-size: 16px;
-  border: 2px dashed #cbd5e0;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: #94a3b8;
-  background: white;
-  border-radius: 12px;
-  margin-top: 20px;
-}
-
-/* Modal */
-.modal {
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-  background-color: white;
-  margin: 5% auto;
-  padding: 30px;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-content h2 {
-  margin-bottom: 20px;
-  color: #2d3748;
-  font-size: 24px;
-}
-
-.close {
-  position: absolute;
-  right: 25px;
-  top: 20px;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #a0aec0;
-}
-
-.close:hover {
-  color: #4a5568;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #4a5568;
-  font-size: 14px;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 12px 15px;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 15px;
+.pp-shell {
+  min-height: 100vh;
   background: #f8fafc;
 }
 
-.form-group input:focus {
-  outline: none;
-  border-color: #2f855a;
-  background: white;
+.pp-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
 }
 
-.submit-btn {
-  background: #2f855a;
-  color: white;
-  padding: 14px 20px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  width: 100%;
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 10px;
+.pp-logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.submit-btn:hover {
-  background: #276749;
-}
-
-.logout-btn {
+.pp-nav-link {
   display: block;
-  width: 100%;
-  padding: 14px 0;
-  font-size: 16px;
-  color: #e53e3e;
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  margin-top: 20px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.logout-btn:hover {
-  font-weight: bold;
+.pp-nav-link:hover,
+.pp-nav-link.active {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
-/* Undo */
-.undo-toast {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  background: #2d3748;
-  color: white;
-  padding: 12px 14px;
-  border-radius: 10px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  z-index: 1500;
+.pp-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
 }
 
-.undo-toast button {
-  background: #fff;
-  color: #2d3748;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  cursor: pointer;
+.pp-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-@media (max-width: 1100px) {
-  .insights-grid {
-    grid-template-columns: 1fr;
-  }
+.pp-hover:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
-@media (max-width: 900px) {
-  .container {
-    flex-direction: column;
-  }
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.22s ease;
+}
 
-  .sidebar {
-    width: 100%;
-    height: auto;
-  }
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
 
-  .main {
-    padding: 20px;
-  }
-
-  .item-card {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .actions {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+@media (max-width: 767px) {
+  .pp-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
   }
 }
 </style>

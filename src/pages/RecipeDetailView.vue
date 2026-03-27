@@ -1,213 +1,131 @@
 <template>
-  <div class="container">
-    <aside class="sidebar">
-      <h2 class="logo">PantryPlan</h2>
-      <nav>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/recipes" class="active">Recipes</a>
-        <a href="/settings">Settings</a>
-        <button class="logout-btn" @click="logout">Logout</button>
-      </nav>
-    </aside>
+  <div class="container-fluid pp-shell">
+    <div class="row g-0">
+      <aside class="col-12 col-md-3 col-xl-2 pp-sidebar p-3 p-md-4">
+        <div class="pp-logo mb-3">PantryPlan</div>
+        <nav class="d-flex flex-column gap-1">
+          <a href="/dashboard" class="pp-nav-link">Dashboard</a>
+          <a href="/recipes" class="pp-nav-link active">Recipes</a>
+          <a href="/history" class="pp-nav-link">History</a>
+          <a href="/settings" class="pp-nav-link">Settings</a>
+          <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
+        </nav>
+      </aside>
 
-    <main class="main">
-      <button class="back-btn" @click="router.push('/recipes')">← Back to Recipes</button>
+      <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
+        <button class="btn btn-link ps-0 mb-3" @click="router.push('/recipes')">← Back to Recipes</button>
 
-      <div v-if="loading">Loading...</div>
+        <div v-if="loading" class="text-muted">Loading...</div>
 
-      <div v-else class="recipe-detail">
-        <img :src="recipe.image" :alt="recipe.title" class="recipe-img" />
-        <h1>{{ recipe.title }}</h1>
-        <p class="ready-time">⏱ Ready in {{ recipe.readyInMinutes }} minutes</p>
+        <div v-else class="pp-card p-4">
+          <img :src="recipe.image" :alt="recipe.title" class="recipe-img mb-3" />
+          <h1 class="h3">{{ recipe.title }}</h1>
+          <p class="text-muted mb-4">⏱ Ready in {{ recipe.readyInMinutes }} minutes</p>
 
-        <div class="section">
-          <h2>Ingredients</h2>
-          <ul>
-            <li v-for="ingredient in recipe.extendedIngredients" :key="ingredient.id">
-              {{ ingredient.original }}
-            </li>
-          </ul>
+          <div class="mb-4">
+            <h2 class="h5 border-bottom pb-2">Ingredients</h2>
+            <ul class="list-unstyled mb-0">
+              <li v-for="ingredient in recipe.extendedIngredients" :key="ingredient.id" class="py-2 border-bottom text-secondary">
+                {{ ingredient.original }}
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h2 class="h5 border-bottom pb-2">Instructions</h2>
+            <div v-html="recipe.instructions"></div>
+          </div>
         </div>
-
-        <div class="section">
-          <h2>Instructions</h2>
-          <div v-html="recipe.instructions"></div>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { auth } from '../firebaseConfig.js';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { auth } from '../firebaseConfig.js'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { useRouter, useRoute } from 'vue-router'
 
-const router = useRouter();
-const route = useRoute();
-const recipe = ref(null);
-const loading = ref(true);
+const router = useRouter()
+const route = useRoute()
+const recipe = ref(null)
+const loading = ref(true)
 
 onMounted(() => {
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      fetchRecipe();
+      fetchRecipe()
     } else {
-      router.push('/login');
+      router.push('/login')
     }
-  });
-});
+  })
+})
 
 async function fetchRecipe() {
   const res = await fetch(
     `https://api.spoonacular.com/recipes/${route.params.id}/information?apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
-  );
-  recipe.value = await res.json();
-  loading.value = false;
+  )
+  recipe.value = await res.json()
+  loading.value = false
 }
 
 async function logout() {
-  await signOut(auth);
-  router.push('/login');
+  await signOut(auth)
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Inter", sans-serif;
+.pp-shell {
+  min-height: 100vh;
+  background: #f8fafc;
 }
 
-.container {
-    display: flex;
+.pp-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
 }
 
-.sidebar {
-    width: 250px;
-    background: white;
-    height: 100vh;
-    padding: 25px;
-    border-right: 1px solid #e0e0e0;
-    position: sticky;
-    top: 0;
+.pp-logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.logo {
-    margin-bottom: 30px;
-    font-size: 22px;
-    font-weight: 600;
+.pp-nav-link {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.sidebar nav a {
-    display: block;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #555;
-    cursor: pointer;
-    text-decoration: none;
-    transition: 0.2s;
+.pp-nav-link:hover,
+.pp-nav-link.active {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
-.sidebar nav a:hover,
-.sidebar nav a.active {
-    color: #2c7a7b;
-    font-weight: bold;
-}
-
-.main {
-    flex: 1;
-    padding: 40px;
-    background: #edf2f7;
-    min-height: 100vh;
-}
-
-.back-btn {
-    background: none;
-    border: none;
-    color: #2c7a7b;
-    font-size: 16px;
-    cursor: pointer;
-    margin-bottom: 20px;
-    padding: 0;
-}
-
-.back-btn:hover {
-    text-decoration: underline;
-}
-
-.recipe-detail {
-    background: white;
-    border-radius: 16px;
-    padding: 30px;
+.pp-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
 }
 
 .recipe-img {
-    width: 100%;
-    max-height: 400px;
-    object-fit: cover;
-    border-radius: 12px;
-    margin-bottom: 20px;
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 0.75rem;
 }
 
-h1 {
-    font-size: 28px;
-    color: #2d3748;
-    margin-bottom: 10px;
-}
-
-.ready-time {
-    color: #718096;
-    margin-bottom: 25px;
-    font-size: 15px;
-}
-
-.section {
-    margin-top: 25px;
-}
-
-.section h2 {
-    font-size: 20px;
-    color: #2d3748;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #edf2f7;
-    padding-bottom: 8px;
-}
-
-.section ul {
-    list-style: none;
-    padding: 0;
-}
-
-.section ul li {
-    padding: 8px 0;
-    border-bottom: 1px solid #f7fafc;
-    color: #4a5568;
-    font-size: 15px;
-}
-
-.section p {
-    color: #4a5568;
-    line-height: 1.8;
-    font-size: 15px;
-}
-
-.logout-btn {
-    display: block;
-    width: 100%;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #e53e3e;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    margin-top: 20px;
-}
-
-.logout-btn:hover {
-    font-weight: bold;
+@media (max-width: 767px) {
+  .pp-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
 }
 </style>

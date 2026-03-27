@@ -1,269 +1,148 @@
 <template>
-  <div class="container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <h2 class="logo">🍎 PantryPlan</h2>
-      <nav>
-        <a href="/dashboard">🏠 Dashboard</a>
-        <a href="/recipes">🍜 Recipes</a>
-        <a href="/settings" class="active">⚙️ Settings</a>
-        <button class="logout-btn" @click="logout">🚪 Logout</button>
-      </nav>
-    </aside>
+  <div class="container-fluid pp-shell">
+    <div class="row g-0">
+      <aside class="col-12 col-md-3 col-xl-2 pp-sidebar p-3 p-md-4">
+        <div class="pp-logo mb-3">PantryPlan</div>
+        <nav class="d-flex flex-column gap-1">
+          <a href="/dashboard" class="pp-nav-link">Dashboard</a>
+          <a href="/recipes" class="pp-nav-link">Recipes</a>
+          <a href="/history" class="pp-nav-link">History</a>
+          <a href="/settings" class="pp-nav-link active">Settings</a>
+          <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
+        </nav>
+      </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="top-bar">
-        <h1>Settings</h1>
-      </div>
+      <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
+        <h1 class="h3 mb-4">Settings</h1>
 
-      <div class="settings-card">
-        <h3>Account Details</h3>
-        <p class="label">Email</p>
-        <p class="value">{{ userEmail }}</p>
-      </div>
+        <div class="pp-card p-4 mb-3">
+          <h2 class="h5 mb-2">Account Details</h2>
+          <p class="text-muted mb-1 small">Email</p>
+          <p class="mb-0">{{ userEmail }}</p>
+        </div>
 
-      <div class="settings-card">
-        <h3>Change Password</h3>
-        <form @submit.prevent="changePassword">
-          <div class="form-group">
-            <label>New Password:</label>
-            <input type="password" v-model="newPassword" required />
-          </div>
-          <div class="form-group">
-            <label>Confirm Password:</label>
-            <input type="password" v-model="confirmPassword" required />
-          </div>
-          <button type="submit" class="submit-btn">Update Password</button>
-        </form>
-      </div>
+        <div class="pp-card p-4 mb-3">
+          <h2 class="h5 mb-3">Change Password</h2>
+          <form @submit.prevent="changePassword">
+            <div class="mb-3">
+              <label class="form-label">New Password</label>
+              <input class="form-control" type="password" v-model="newPassword" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm Password</label>
+              <input class="form-control" type="password" v-model="confirmPassword" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Update Password</button>
+          </form>
+        </div>
 
-      <div class="settings-card danger-zone">
-        <h3>Danger Zone</h3>
-        <p>Permanently delete your account and all your data.</p>
-        <button class="delete-btn" @click="deleteAccount">Delete Account</button>
-      </div>
-    </main>
+        <div class="pp-card p-4 border border-danger-subtle">
+          <h2 class="h5 text-danger mb-2">Danger Zone</h2>
+          <p class="text-muted">Permanently delete your account and all your data.</p>
+          <button class="btn btn-danger" @click="deleteAccount">Delete Account</button>
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { auth } from '../firebaseConfig.js';
-import { signOut, onAuthStateChanged, updatePassword, deleteUser } from 'firebase/auth';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue'
+import { auth } from '../firebaseConfig.js'
+import { signOut, onAuthStateChanged, updatePassword, deleteUser } from 'firebase/auth'
+import { useRouter } from 'vue-router'
 
-const router = useRouter();
-const userEmail = ref('');
-const newPassword = ref('');
-const confirmPassword = ref('');
+const router = useRouter()
+const userEmail = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
 
 onMounted(() => {
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      userEmail.value = user.email;
+      userEmail.value = user.email
     } else {
-      router.push('/login');
+      router.push('/login')
     }
-  });
-});
+  })
+})
 
 async function changePassword() {
   if (newPassword.value !== confirmPassword.value) {
-    alert('Passwords do not match!');
-    return;
+    alert('Passwords do not match!')
+    return
   }
 
   try {
-    await updatePassword(auth.currentUser, newPassword.value);
-    alert('Password updated successfully!');
-    newPassword.value = '';
-    confirmPassword.value = '';
+    await updatePassword(auth.currentUser, newPassword.value)
+    alert('Password updated successfully!')
+    newPassword.value = ''
+    confirmPassword.value = ''
   } catch (error) {
-    alert('Error: ' + error.message);
+    alert('Error: ' + error.message)
   }
 }
 
 async function deleteAccount() {
-  if (!confirm('Are you sure? This cannot be undone.')) return;
+  if (!confirm('Are you sure? This cannot be undone.')) return
 
   try {
-    await deleteUser(auth.currentUser);
-    router.push('/login');
+    await deleteUser(auth.currentUser)
+    router.push('/login')
   } catch (error) {
-    alert('Error: ' + error.message);
+    alert('Error: ' + error.message)
   }
 }
 
 async function logout() {
-  await signOut(auth);
-  router.push('/login');
+  await signOut(auth)
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Inter", sans-serif;
+.pp-shell {
+  min-height: 100vh;
+  background: #f8fafc;
 }
 
-.container {
-    display: flex;
+.pp-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
 }
 
-.sidebar {
-    width: 250px;
-    background: white;
-    height: 100vh;
-    padding: 25px;
-    border-right: 1px solid #e0e0e0;
+.pp-logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.logo {
-    margin-bottom: 30px;
-    font-size: 22px;
-    font-weight: 600;
+.pp-nav-link {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.sidebar nav a {
-    display: block;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #555;
-    cursor: pointer;
-    text-decoration: none;
-    transition: 0.2s;
+.pp-nav-link:hover,
+.pp-nav-link.active {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
-.sidebar nav a:hover,
-.sidebar nav a.active {
-    color: #2c7a7b;
-    font-weight: bold;
+.pp-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
 }
 
-.main {
-    flex: 1;
-    padding: 40px;
-    background: #edf2f7;
-    min-height: 100vh;
-}
-
-.top-bar {
-    margin-bottom: 30px;
-}
-
-.settings-card {
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-
-.settings-card h3 {
-    font-size: 18px;
-    margin-bottom: 15px;
-    color: #2d3748;
-}
-
-.label {
-    font-size: 13px;
-    color: #718096;
-    margin-bottom: 4px;
-}
-
-.value {
-    font-size: 16px;
-    color: #2d3748;
-    font-weight: 500;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #4a5568;
-    font-size: 14px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 15px;
-    background: #f8fafc;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #2f855a;
-    background: white;
-}
-
-.submit-btn {
-    background: #2f855a;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.submit-btn:hover {
-    background: #276749;
-}
-
-.danger-zone {
-    border: 2px solid #fed7d7;
-}
-
-.danger-zone h3 {
-    color: #e53e3e;
-}
-
-.danger-zone p {
-    color: #718096;
-    margin-bottom: 15px;
-    font-size: 14px;
-}
-
-.delete-btn {
-    background: #e53e3e;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.delete-btn:hover {
-    background: #c53030;
-}
-
-.logout-btn {
-    display: block;
-    width: 100%;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #e53e3e;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    margin-top: 20px;
-}
-
-.logout-btn:hover {
-    font-weight: bold;
+@media (max-width: 767px) {
+  .pp-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
 }
 </style>
