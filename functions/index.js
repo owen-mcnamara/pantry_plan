@@ -20,27 +20,43 @@ exports.addProduct = onRequest(
   { cors: true },
   async (request, response) => {
     try {
-      const { userId, name, expiryDate, expiryTimestampUtc, status } = request.body || {};
+      const {
+        userId,
+        name,
+        expiryDate,
+        expiryTimestampUtc,
+        status,
+        quantity,
+        unit
+      } = request.body || {};
 
       if (!userId || !name || !expiryDate) {
         response.status(400).json({ success: false, message: "Missing required fields" });
         return;
       }
 
+      const parsedQty = Number(quantity);
+      const safeQuantity = Number.isFinite(parsedQty) && parsedQty >= 0 ? parsedQty : 1;
+      const safeUnit = (unit || "item").toString().trim().slice(0, 20) || "item";
       const now = new Date().toISOString();
 
       const res = await db.collection("products").add({
         userId,
-        name,
+        name: name.toString().trim(),
         expiryDate,
         expiryTimestampUtc: expiryTimestampUtc || new Date(expiryDate).toISOString(),
         status: status || "active",
+
+        quantity: safeQuantity,
+        unit: safeUnit,
+
         createdAt: now,
         updatedAt: now,
         usedAt: null,
         wastedAt: null,
         deletedAt: null
       });
+
 
       response.json({ success: true, id: res.id });
     } catch (error) {
@@ -118,13 +134,46 @@ exports.updateProduct = onRequest(
   { cors: true },
   async (request, response) => {
     try {
-      const { productId, ...updates } = request.body || {};
+      const { productId, name, expiryDate, quantity, unit } = request.body || {};
+
       if (!productId) {
         response.status(400).json({ success: false, message: "Missing productId" });
         return;
       }
 
-      updates.updatedAt = new Date().toISOString();
+      const updates = { updatedAt: new Date().toISOString() };
+
+      if (name !== undefined) {
+        const trimmed = name.toString().trim();
+        if (!trimmed) {
+          response.status(400).json({ success: false, message: "Name cannot be empty" });
+          return;
+        }
+        updates.name = trimmed;
+      }
+
+      if (expiryDate !== undefined) {
+        updates.expiryDate = expiryDate;
+        updates.expiryTimestampUtc = new Date(expiryDate).toISOString();
+      }
+
+      if (quantity !== undefined) {
+        const parsedQty = Number(quantity);
+        if (!Number.isFinite(parsedQty) || parsedQty < 0) {
+          response.status(400).json({ success: false, message: "Quantity must be a number >= 0" });
+          return;
+        }
+        updates.quantity = parsedQty;
+      }
+
+      if (unit !== undefined) {
+        const safeUnit = unit.toString().trim().slice(0, 20);
+        if (!safeUnit) {
+          response.status(400).json({ success: false, message: "Unit cannot be empty" });
+          return;
+        }
+        updates.unit = safeUnit;
+      }
 
       await db.collection("products").doc(productId).update(updates);
       response.json({ success: true });
@@ -363,7 +412,7 @@ exports.dailyExpiryCheck = onSchedule(
           to: userEmail,
           subject: "PantryPlan - Items Expiring Soon!",
           text:
-`Hi,
+            `Hi,
 
 The following items in your pantry are expiring soon:
 

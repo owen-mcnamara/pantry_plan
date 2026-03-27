@@ -30,7 +30,7 @@
           <div class="item-info">
             <div>
               <h3>{{ product.name }}</h3>
-              <p>Expires: {{ product.expiryDate }}</p>
+              <p>{{ formatQty(product.quantity, product.unit) }} • Expires: {{ product.expiryDate }}</p>
             </div>
           </div>
 
@@ -39,6 +39,7 @@
           </span>
 
           <div class="actions">
+            <button class="edit-btn" @click="openEditModal(product)">Edit</button>
             <button class="use-btn" @click="markUsed(product.id)">Use</button>
             <button class="waste-btn" @click="confirmWaste(product.id)">Waste</button>
             <button class="delete-btn" @click="deleteItem(product.id)">Delete</button>
@@ -101,6 +102,38 @@
       </div>
     </main>
 
+    <!-- Edit Modal -->
+    <div class="modal" v-if="showEditModal">
+      <div class="modal-content">
+        <span class="close" @click="showEditModal = false">&times;</span>
+        <h2>Edit Item</h2>
+
+        <form @submit.prevent="saveEdit">
+          <div class="form-group">
+            <label>Item Name:</label>
+            <input type="text" v-model="editForm.name" required />
+          </div>
+
+          <div class="form-group">
+            <label>Expiry Date:</label>
+            <input type="date" v-model="editForm.expiryDate" required />
+          </div>
+
+          <div class="form-group">
+            <label>Quantity:</label>
+            <input type="number" min="0" step="0.1" v-model.number="editForm.quantity" required />
+          </div>
+
+          <div class="form-group">
+            <label>Unit:</label>
+            <input type="text" maxlength="20" v-model="editForm.unit" required />
+          </div>
+
+          <button type="submit" class="submit-btn">Save Changes</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Add Item Modal -->
     <div class="modal" v-if="showModal">
       <div class="modal-content">
@@ -111,6 +144,17 @@
           <div class="form-group">
             <label>Item Name:</label>
             <input type="text" v-model="newItem.name" required />
+            <p class="muted">{{ formatQty(newItem.quantity, newItem.unit) }} • Expires: {{ newItem.expiryDate || '-' }}</p>
+          </div>
+
+          <div class="form-group">
+            <label>Quantity:</label>
+            <input type="number" min="0" step="0.1" v-model.number="newItem.quantity" required />
+          </div>
+
+          <div class="form-group">
+            <label>Unit:</label>
+            <input type="text" maxlength="20" v-model="newItem.unit" placeholder="item, kg, L..." required />
           </div>
 
           <div class="form-group">
@@ -143,11 +187,15 @@ import {
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
+const showEditModal = ref(false)
+const editingItem = ref(null)
+const editForm = ref({ name: '', expiryDate: '', quantity: 1, unit: 'item' })
+
 const router = useRouter()
 const products = ref([])
 const loading = ref(true)
 const showModal = ref(false)
-const newItem = ref({ name: '', expiryDate: '' })
+const newItem = ref({ name: '', expiryDate: '', quantity: 1, unit: 'item' })
 const userId = ref(null)
 
 const analytics = ref({ labels: [], used: [], wasted: [], wasteRate: 0 })
@@ -224,6 +272,8 @@ async function fetchAnalytics() {
 }
 
 async function addItem() {
+  if (!newItem.value.name || !newItem.value.expiryDate) return
+
   await fetch('https://addproduct-moat6vqvca-uc.a.run.app', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -232,11 +282,13 @@ async function addItem() {
       name: newItem.value.name,
       expiryDate: newItem.value.expiryDate,
       expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
-      status: 'active'
+      status: 'active',
+      quantity: newItem.value.quantity,
+      unit: newItem.value.unit
     })
   })
 
-  newItem.value = { name: '', expiryDate: '' }
+  newItem.value = { name: '', expiryDate: '', quantity: 1, unit: 'item' }
   showModal.value = false
   await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
@@ -293,6 +345,43 @@ async function undoLastAction() {
 
   clearTimeout(undo.value.timer)
   undo.value.visible = false
+  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+}
+
+function formatQty(quantity, unit) {
+  const q = Number(quantity)
+  const safeQ = Number.isFinite(q) ? q : 1
+  const safeUnit = (unit || 'item').toString()
+  return `${safeQ} ${safeUnit}`
+}
+
+function openEditModal(product) {
+  editingItem.value = product
+  editForm.value = {
+    name: product.name || '',
+    expiryDate: product.expiryDate || '',
+    quantity: Number.isFinite(Number(product.quantity)) ? Number(product.quantity) : 1,
+    unit: product.unit || 'item'
+  }
+  showEditModal.value = true
+}
+
+async function saveEdit() {
+  if (!editingItem.value?.id) return
+
+  await fetch('https://updateproduct-moat6vqvca-uc.a.run.app', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      productId: editingItem.value.id,
+      name: editForm.value.name,
+      expiryDate: editForm.value.expiryDate,
+      quantity: editForm.value.quantity,
+      unit: editForm.value.unit
+    })
+  })
+
+  showEditModal.value = false
   await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
 }
 
@@ -447,6 +536,7 @@ body {
   gap: 8px;
 }
 
+.edit-btn,
 .use-btn,
 .waste-btn,
 .delete-btn {
@@ -456,6 +546,11 @@ body {
   cursor: pointer;
   font-size: 13px;
   white-space: nowrap;
+}
+
+.edit-btn {
+  background: #ebf8ff;
+  color: #2b6cb0;
 }
 
 .use-btn {
