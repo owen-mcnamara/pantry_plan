@@ -1,5 +1,19 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+.firebase/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,43 +21,34 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+# OS files
 .DS_Store
-dist
-dist-ssr
-coverage
-*.local
+Thumbs.db
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-*.tsbuildinfo
-
-.eslintcache
-
-# Cypress
+# Testing
+coverage/
+__screenshots__/
 /cypress/videos/
 /cypress/screenshots/
 
-# Vitest
-__screenshots__/
+# Build info
+*.tsbuildinfo
+.eslintcache
 
+# Temporary files
+*.local
+*.tmp
+*.temp
 
-node_modules
-dist
-.firebase
-
-# Secrets
-.env
-#src/firebaseConfig.js
-
-context/pantryplan.xml
-
-src/services/auth.js
+# Context files (if sensitive)
+context/*.xml

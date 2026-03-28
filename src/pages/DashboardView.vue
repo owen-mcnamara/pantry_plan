@@ -1,7 +1,6 @@
 <template>
   <div class="container-fluid pp-shell">
     <div class="row g-0">
-      <!-- Sidebar -->
       <aside class="col-12 col-md-3 col-xl-2 pp-sidebar p-3 p-md-4">
         <div class="pp-logo mb-3">PantryPlan</div>
         <nav class="d-flex flex-column gap-1">
@@ -13,7 +12,6 @@
         </nav>
       </aside>
 
-      <!-- Main -->
       <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h1 class="h3 mb-0">My Pantry</h1>
@@ -51,7 +49,6 @@
           </TransitionGroup>
         </div>
 
-        <!-- Insights -->
         <div class="row g-3 mt-1">
           <div class="col-12 col-xl-6">
             <section class="pp-card p-3 p-md-4 h-100">
@@ -96,7 +93,6 @@
           </div>
         </div>
 
-        <!-- Graph -->
         <div class="pp-card p-3 p-md-4 mt-4" style="height: 500px;">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h5 mb-0">Weekly Waste Insights (Last 4 Weeks)</h2>
@@ -107,7 +103,6 @@
           <div v-else class="text-muted">No analytics data yet.</div>
         </div>
 
-        <!-- Undo Toast -->
         <div
           v-if="undo.visible"
           class="position-fixed bottom-0 end-0 m-4 p-3 rounded bg-dark text-white d-flex gap-2 align-items-center"
@@ -119,7 +114,6 @@
       </main>
     </div>
 
-    <!-- Waste Confirm Modal -->
     <div class="modal fade" :class="{ show: showWasteConfirmModal }" :style="{ display: showWasteConfirmModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content pp-card border-0">
@@ -139,7 +133,6 @@
     </div>
     <div v-if="showWasteConfirmModal" class="modal-backdrop fade show"></div>
 
-    <!-- Edit Modal -->
     <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content pp-card border-0">
@@ -177,7 +170,6 @@
     </div>
     <div v-if="showEditModal" class="modal-backdrop fade show"></div>
 
-    <!-- Add Item Modal -->
     <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content pp-card border-0">
@@ -225,6 +217,7 @@ import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+import { authenticatedFetch } from '../services/api.js'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
@@ -279,9 +272,12 @@ onMounted(() => {
 async function fetchProducts() {
   loading.value = true
   try {
-    const res = await fetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const res = await authenticatedFetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
     const data = await res.json()
     products.value = data.products || []
+  } catch (err) {
+    console.error('fetchProducts error:', err)
+    products.value = []
   } finally {
     loading.value = false
   }
@@ -289,23 +285,25 @@ async function fetchProducts() {
 
 async function fetchInsights() {
   try {
-    const res = await fetch(`https://getinsightssummary-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const res = await authenticatedFetch(`https://getinsightssummary-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
     const data = await res.json()
 
     insights.value = data.success
       ? data
       : { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
-  } catch {
+  } catch (err) {
+    console.error('fetchInsights error:', err)
     insights.value = { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
   }
 }
 
 async function fetchAnalytics() {
   try {
-    const res = await fetch(`https://getweeklyanalytics-moat6vqvca-uc.a.run.app?userId=${userId.value}&weeks=4`)
+    const res = await authenticatedFetch(`https://getweeklyanalytics-moat6vqvca-uc.a.run.app?userId=${userId.value}&weeks=4`)
     const data = await res.json()
     analytics.value = data.success ? data : { labels: [], used: [], wasted: [], wasteRate: 0 }
-  } catch {
+  } catch (err) {
+    console.error('fetchAnalytics error:', err)
     analytics.value = { labels: [], used: [], wasted: [], wasteRate: 0 }
   }
 }
@@ -313,33 +311,43 @@ async function fetchAnalytics() {
 async function addItem() {
   if (!newItem.value.name || !newItem.value.expiryDate) return
 
-  await fetch('https://addproduct-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId: userId.value,
-      name: newItem.value.name,
-      expiryDate: newItem.value.expiryDate,
-      expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
-      status: 'active',
-      quantity: newItem.value.quantity,
-      unit: newItem.value.unit
+  try {
+    await authenticatedFetch('https://addproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId.value,
+        name: newItem.value.name,
+        expiryDate: newItem.value.expiryDate,
+        expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
+        status: 'active',
+        quantity: newItem.value.quantity,
+        unit: newItem.value.unit
+      })
     })
-  })
 
-  newItem.value = { name: '', expiryDate: '', quantity: 1, unit: 'item' }
-  showModal.value = false
-  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+    newItem.value = { name: '', expiryDate: '', quantity: 1, unit: 'item' }
+    showModal.value = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('addItem error:', err)
+    alert('Failed to add item')
+  }
 }
 
 async function deleteItem(productId) {
-  await fetch('https://deleteproduct-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId })
-  })
+  try {
+    await authenticatedFetch('https://deleteproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId })
+    })
 
-  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('deleteItem error:', err)
+    alert('Failed to delete item')
+  }
 }
 
 async function markUsed(productId) {
@@ -364,14 +372,19 @@ async function confirmWasteNow() {
 }
 
 async function updateStatus(productId, status) {
-  await fetch('https://updateproductstatus-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId, status })
-  })
+  try {
+    await authenticatedFetch('https://updateproductstatus-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, status })
+    })
 
-  showUndo(productId, status)
-  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+    showUndo(productId, status)
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('updateStatus error:', err)
+    alert('Failed to update status')
+  }
 }
 
 function showUndo(productId, action) {
@@ -388,15 +401,20 @@ function showUndo(productId, action) {
 async function undoLastAction() {
   if (!undo.value.productId) return
 
-  await fetch('https://undoproductstatus-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId: undo.value.productId })
-  })
+  try {
+    await authenticatedFetch('https://undoproductstatus-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: undo.value.productId })
+    })
 
-  clearTimeout(undo.value.timer)
-  undo.value.visible = false
-  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+    clearTimeout(undo.value.timer)
+    undo.value.visible = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('undoLastAction error:', err)
+    alert('Failed to undo')
+  }
 }
 
 function formatQty(quantity, unit) {
@@ -420,20 +438,25 @@ function openEditModal(product) {
 async function saveEdit() {
   if (!editingItem.value?.id) return
 
-  await fetch('https://updateproduct-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      productId: editingItem.value.id,
-      name: editForm.value.name,
-      expiryDate: editForm.value.expiryDate,
-      quantity: editForm.value.quantity,
-      unit: editForm.value.unit
+  try {
+    await authenticatedFetch('https://updateproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: editingItem.value.id,
+        name: editForm.value.name,
+        expiryDate: editForm.value.expiryDate,
+        quantity: editForm.value.quantity,
+        unit: editForm.value.unit
+      })
     })
-  })
 
-  showEditModal.value = false
-  await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+    showEditModal.value = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('saveEdit error:', err)
+    alert('Failed to save changes')
+  }
 }
 
 function daysUntilExpiry(expiryDate) {

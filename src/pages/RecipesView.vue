@@ -133,7 +133,7 @@ onMounted(() => {
   onAuthStateChanged(auth, (user) => {
     if (user) {
       userId.value = user.uid
-      loadRecipes()
+      setTimeout(() => loadRecipes(), 100)
     } else {
       router.push('/login')
     }
@@ -180,7 +180,16 @@ async function loadRecipes() {
   refreshNonce.value += 1
 
   try {
-    const pantryRes = await fetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    if (!auth.currentUser) {
+      throw new Error('Not authenticated')
+    }
+
+    const token = await auth.currentUser.getIdToken(true)
+    
+    const pantryRes = await fetch(
+      `https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
     const pantryData = await pantryRes.json()
     const pantryNames = (pantryData.products || []).map((p) => p.name).filter(Boolean)
 
@@ -189,12 +198,12 @@ async function loadRecipes() {
       return
     }
 
-    // Sample a rotating subset so Refresh can surface different ideas.
     const sampledIngredients = shuffled(pantryNames).slice(0, INGREDIENT_SAMPLE_SIZE)
     const ingredients = sampledIngredients.join(',')
 
     const spoonacularRes = await fetch(
-      `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${ingredients}&number=${FETCH_SIZE}&ranking=2&ignorePantry=true&apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
+      `https://getrecipesuggestions-moat6vqvca-uc.a.run.app?ingredients=${encodeURIComponent(ingredients)}&number=${FETCH_SIZE}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
     )
 
     if (!spoonacularRes.ok) {
@@ -203,7 +212,11 @@ async function loadRecipes() {
 
     const spoonacularData = await spoonacularRes.json()
 
-    recipes.value = spoonacularData.map((recipe) => {
+    if (!spoonacularData.success) {
+      throw new Error(spoonacularData.message || 'Failed to load recipes')
+    }
+
+    recipes.value = spoonacularData.recipes.map((recipe) => {
       const usedCount = Number(recipe.usedIngredientCount || recipe.usedIngredients?.length || 0)
       const missedCount = Number(recipe.missedIngredientCount || recipe.missedIngredients?.length || 0)
 
@@ -219,6 +232,7 @@ async function loadRecipes() {
 
     visibleCount.value = LOAD_MORE_STEP
   } catch (error) {
+    console.error('loadRecipes error:', error)
     errorMessage.value = error.message || 'Failed to load recipes.'
     recipes.value = []
   } finally {

@@ -15,6 +15,10 @@
       <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
         <h1 class="h3 mb-4">Settings</h1>
 
+        <div v-if="feedback.message" class="alert" :class="feedback.type === 'error' ? 'alert-danger' : 'alert-success'" role="alert">
+          {{ feedback.message }}
+        </div>
+
         <div class="pp-card p-4 mb-3">
           <h2 class="h5 mb-2">Account Details</h2>
           <p class="text-muted mb-1 small">Email</p>
@@ -26,23 +30,42 @@
           <form @submit.prevent="changePassword">
             <div class="mb-3">
               <label class="form-label">New Password</label>
-              <input class="form-control" type="password" v-model="newPassword" required />
+              <input class="form-control" type="password" minlength="8" v-model="newPassword" required />
             </div>
             <div class="mb-3">
               <label class="form-label">Confirm Password</label>
-              <input class="form-control" type="password" v-model="confirmPassword" required />
+              <input class="form-control" type="password" minlength="8" v-model="confirmPassword" required />
             </div>
-            <button type="submit" class="btn btn-primary">Update Password</button>
+            <button type="submit" class="btn btn-primary" :disabled="busy">Update Password</button>
           </form>
         </div>
 
         <div class="pp-card p-4 border border-danger-subtle">
           <h2 class="h5 text-danger mb-2">Danger Zone</h2>
           <p class="text-muted">Permanently delete your account and all your data.</p>
-          <button class="btn btn-danger" @click="deleteAccount">Delete Account</button>
+          <button class="btn btn-danger" @click="showDeleteConfirm = true">Delete Account</button>
         </div>
       </main>
     </div>
+
+    <div class="modal fade" :class="{ show: showDeleteConfirm }" :style="{ display: showDeleteConfirm ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Delete Account</h5>
+            <button type="button" class="btn-close" @click="showDeleteConfirm = false"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">Are you sure? This action cannot be undone.</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button class="btn btn-outline-secondary" @click="showDeleteConfirm = false">Cancel</button>
+            <button class="btn btn-danger" :disabled="busy" @click="deleteAccount">Delete Account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showDeleteConfirm" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
@@ -56,6 +79,9 @@ const router = useRouter()
 const userEmail = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
+const showDeleteConfirm = ref(false)
+const busy = ref(false)
+const feedback = ref({ type: 'success', message: '' })
 
 onMounted(() => {
   onAuthStateChanged(auth, (user) => {
@@ -68,29 +94,38 @@ onMounted(() => {
 })
 
 async function changePassword() {
+  feedback.value = { type: 'success', message: '' }
+
   if (newPassword.value !== confirmPassword.value) {
-    alert('Passwords do not match!')
+    feedback.value = { type: 'error', message: 'Passwords do not match.' }
     return
   }
 
+  busy.value = true
   try {
     await updatePassword(auth.currentUser, newPassword.value)
-    alert('Password updated successfully!')
+    feedback.value = { type: 'success', message: 'Password updated successfully.' }
     newPassword.value = ''
     confirmPassword.value = ''
   } catch (error) {
-    alert('Error: ' + error.message)
+    feedback.value = { type: 'error', message: error.message || 'Failed to update password.' }
+  } finally {
+    busy.value = false
   }
 }
 
 async function deleteAccount() {
-  if (!confirm('Are you sure? This cannot be undone.')) return
+  busy.value = true
+  feedback.value = { type: 'success', message: '' }
 
   try {
     await deleteUser(auth.currentUser)
     router.push('/login')
   } catch (error) {
-    alert('Error: ' + error.message)
+    feedback.value = { type: 'error', message: error.message || 'Failed to delete account.' }
+  } finally {
+    busy.value = false
+    showDeleteConfirm.value = false
   }
 }
 

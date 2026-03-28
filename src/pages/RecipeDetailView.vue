@@ -20,7 +20,7 @@
         <div v-else class="pp-card p-4">
           <img :src="recipe.image" :alt="recipe.title" class="recipe-img mb-3" />
           <h1 class="h3">{{ recipe.title }}</h1>
-          <p class="text-muted mb-4">⏱ Ready in {{ recipe.readyInMinutes }} minutes</p>
+          <p class="text-muted mb-4">Ready in {{ recipe.readyInMinutes }} minutes</p>
 
           <div class="mb-4">
             <h2 class="h5 border-bottom pb-2">Ingredients</h2>
@@ -33,7 +33,7 @@
 
           <div>
             <h2 class="h5 border-bottom pb-2">Instructions</h2>
-            <div v-html="recipe.instructions"></div>
+            <p class="instruction-text mb-0">{{ sanitizedInstructions }}</p>
           </div>
         </div>
       </main>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { auth } from '../firebaseConfig.js'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { useRouter, useRoute } from 'vue-router'
@@ -62,12 +62,43 @@ onMounted(() => {
   })
 })
 
+const sanitizedInstructions = computed(() => {
+  const html = recipe.value?.instructions || ''
+  const stripped = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return stripped || 'No instructions provided for this recipe.'
+})
+
 async function fetchRecipe() {
-  const res = await fetch(
-    `https://api.spoonacular.com/recipes/${route.params.id}/information?apiKey=${import.meta.env.VITE_SPOONACULAR_KEY}`
-  )
-  recipe.value = await res.json()
-  loading.value = false
+  try {
+    if (!auth.currentUser) {
+      throw new Error('Not authenticated')
+    }
+
+    const token = await auth.currentUser.getIdToken(true)
+    
+    const res = await fetch(
+      `https://getrecipedetails-moat6vqvca-uc.a.run.app?id=${route.params.id}`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    )
+    const data = await res.json()
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load recipe')
+    }
+    
+    recipe.value = data.recipe
+  } catch (error) {
+    console.error('Failed to fetch recipe:', error)
+    recipe.value = { 
+      title: 'Error loading recipe', 
+      instructions: error.message,
+      extendedIngredients: [],
+      readyInMinutes: 0,
+      image: ''
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 async function logout() {
@@ -120,6 +151,12 @@ async function logout() {
   max-height: 400px;
   object-fit: cover;
   border-radius: 0.75rem;
+}
+
+.instruction-text {
+  white-space: pre-line;
+  line-height: 1.6;
+  color: #334155;
 }
 
 @media (max-width: 767px) {

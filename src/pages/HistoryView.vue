@@ -54,6 +54,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { auth } from '../firebaseConfig.js'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { authenticatedFetch } from '../services/api.js'
 
 const router = useRouter()
 const userId = ref(null)
@@ -82,7 +83,7 @@ async function fetchHistory() {
   error.value = ''
 
   try {
-    const res = await fetch(`${GET_HISTORY_URL}?userId=${encodeURIComponent(userId.value)}&limit=50`)
+    const res = await authenticatedFetch(`${GET_HISTORY_URL}?userId=${encodeURIComponent(userId.value)}&limit=50`)
     const data = await res.json()
 
     if (!res.ok || data.success === false) {
@@ -93,6 +94,7 @@ async function fetchHistory() {
 
     items.value = data.items || []
   } catch (e) {
+    console.error('fetchHistory error:', e)
     error.value = e.message || 'Failed to fetch'
     items.value = []
   } finally {
@@ -105,7 +107,7 @@ async function undoFromHistory(productId) {
   error.value = ''
 
   try {
-    const res = await fetch(UNDO_STATUS_URL, {
+    const res = await authenticatedFetch(UNDO_STATUS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId })
@@ -119,6 +121,7 @@ async function undoFromHistory(productId) {
 
     await fetchHistory()
   } catch (e) {
+    console.error('undoFromHistory error:', e)
     error.value = e.message || 'Undo failed.'
   } finally {
     undoingId.value = null
