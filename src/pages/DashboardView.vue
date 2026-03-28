@@ -119,6 +119,26 @@
       </main>
     </div>
 
+    <!-- Waste Confirm Modal -->
+    <div class="modal fade" :class="{ show: showWasteConfirmModal }" :style="{ display: showWasteConfirmModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Confirm Waste</h5>
+            <button type="button" class="btn-close" @click="closeWasteConfirm"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">Mark this item as wasted? You can still undo from History.</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary" @click="closeWasteConfirm">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmWasteNow">Mark as Wasted</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showWasteConfirmModal" class="modal-backdrop fade show"></div>
+
     <!-- Edit Modal -->
     <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog">
@@ -218,6 +238,8 @@ const loading = ref(true)
 const showModal = ref(false)
 const newItem = ref({ name: '', expiryDate: '', quantity: 1, unit: 'item' })
 const userId = ref(null)
+const showWasteConfirmModal = ref(false)
+const pendingWasteId = ref(null)
 
 const analytics = ref({ labels: [], used: [], wasted: [], wasteRate: 0 })
 const undo = ref({ visible: false, productId: null, action: '', timer: null })
@@ -324,8 +346,20 @@ async function markUsed(productId) {
   await updateStatus(productId, 'used')
 }
 
-async function confirmWaste(productId) {
-  if (!confirm('Mark this item as wasted?')) return
+function confirmWaste(productId) {
+  pendingWasteId.value = productId
+  showWasteConfirmModal.value = true
+}
+
+function closeWasteConfirm() {
+  showWasteConfirmModal.value = false
+  pendingWasteId.value = null
+}
+
+async function confirmWasteNow() {
+  if (!pendingWasteId.value) return
+  const productId = pendingWasteId.value
+  closeWasteConfirm()
   await updateStatus(productId, 'wasted')
 }
 
