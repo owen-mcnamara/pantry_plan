@@ -15,3 +15,17 @@ export async function authenticatedFetch(url, options = {}) {
 
   return fetch(url, { ...options, headers });
 }
+
+export async function lookupBarcode(barcode) {
+  const cleanBarcode = String(barcode || "").trim();
+  const response = await authenticatedFetch(
+    `https://lookupbarcode-moat6vqvca-uc.a.run.app?barcode=${encodeURIComponent(cleanBarcode)}`
+  );
+
+  const data = await response.json();
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Barcode lookup failed");
+  }
+
+  return data;
+}
