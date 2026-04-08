@@ -52,13 +52,9 @@ if (addItemForm) {
                 addItemToDashboard(newItem);
                 modal.style.display = 'none';
                 addItemForm.reset();
-                alert('Item added successfully!');
-            } else {
-                alert('Error adding item');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Failed to add item');
         }
     });
 }

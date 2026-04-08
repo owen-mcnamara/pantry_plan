@@ -1,38 +1,86 @@
-# pantry_plan
+# PantryPlan
 
-This template should help get you started developing with Vue 3 in Vite.
+A pantry management web app built with Vue 3 and Firebase. Track food items, get expiry alerts, reduce waste, and discover recipes based on what you have.
 
-## Recommended IDE Setup
+## Live Demo
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+[PantryPlan](https://pantryplan-1f075.web.app/register)
 
-## Recommended Browser Setup
+## Features
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- **Pantry Tracking**: Add, edit, and delete pantry items with quantity, unit, and expiry date
+- **Expiry Alerts**: Color-coded expiry indicators and daily email notifications for items expiring within 3 days
+- **Waste Insights**: Weekly bar chart of used vs. wasted items with waste rate tracking
+- **Top Wasted Items**: See which items you waste most over the last 30 days
+- **Recipe Suggestions**: Get recipe ideas based on your current pantry
+- **History**: View all used, wasted, and deleted items with undo support
+- **Auth**: Firebase Authentication with protected routes
 
-## Customize configuration
+## Tech Stack
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+| Layer | Tech |
+|---|---|
+| Frontend | Vue 3, Vite, Bootstrap 5, Chart.js |
+| Backend | Firebase Cloud Functions (Node.js) |
+| Database | Firestore |
+| Auth | Firebase Authentication |
+| Hosting | Firebase Hosting |
+| CI/CD | GitHub Actions |
 
-## Project Setup
+## Screenshots
+
+### Dashboard
+| | |
+|---|---|
+| ![Dashboard](./images/dashboard1.png) | ![Dashboard](./images/dashboard2.png) |
+
+### Pages
+| Recipes | History | Settings |
+|---|---|---|
+| ![Recipes](./images/recipes.png) | ![History](./images/history.png) | ![Settings](./images/settings.png) |
+
+
+## Deployment
+
+Deploys automatically to Firebase Hosting on push to `main` via GitHub Actions. Manual deploy:
 
 ```sh
-npm install
+npm run deploy:all
 ```
 
-### Compile and Hot-Reload for Development
+## Cloud Functions
 
-```sh
-npm run dev
+| Function | Description |
+|---|---|
+| `addProduct` | Add a pantry item |
+| `getProducts` | Fetch active pantry items |
+| `updateProduct` | Edit item name, expiry, quantity, unit |
+| `updateProductStatus` | Mark item as used or wasted |
+| `undoProductStatus` | Restore item to active |
+| `deleteProduct` | Soft-delete an item |
+| `getHistory` | Fetch used/wasted/deleted items |
+| `getWeeklyAnalytics` | Weekly used vs. wasted chart data |
+| `getInsightsSummary` | Top wasted items + expiring soon |
+| `getRecipeSuggestions` | Recipe ideas from pantry |
+| `getRecipeDetails` | Full recipe detail |
+| `dailyExpiryCheck` | Scheduled email alerts (every 24h) |
+
+## Project Structure
+
+```
+pantry_plan/
+├── images/
+├── functions/          # Firebase Cloud Functions
+├── src/
+│   ├── pages/          # Route-level Vue components
+│   ├── components/     # Shared components
+│   ├── services/       # API + auth helpers
+│   ├── router/         # Vue Router config
+│   └── styles/         # CSS tokens, base, components
+├── .github/workflows/  # CI/CD pipeline
+└── firebase.json       # Firebase config
 ```
 
-### Compile and Minify for Production
+## License
 
-```sh
-npm run build
-```
+MIT

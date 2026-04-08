@@ -1,414 +1,554 @@
 <template>
-  <div class="container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <h2 class="logo">🍎 PantryPlan</h2>
-      <nav>
-        <a href="#" class="active">🏠 Dashboard</a>
-        <a href="/recipes">🍜 Recipes</a>
-        <a href="/settings">⚙️ Settings</a>
-        <button class="logout-btn" @click="logout">🚪 Logout</button>
-      </nav>
-    </aside>
+  <div class="container-fluid pp-shell">
+    <div class="row g-0">
+      <aside class="col-12 col-md-3 col-xl-2 pp-sidebar p-3 p-md-4">
+        <div class="pp-logo mb-3">PantryPlan</div>
+        <nav class="d-flex flex-column gap-1">
+          <a href="/dashboard" class="pp-nav-link active">Dashboard</a>
+          <a href="/recipes" class="pp-nav-link">Recipes</a>
+          <a href="/history" class="pp-nav-link">History</a>
+          <a href="/settings" class="pp-nav-link">Settings</a>
+          <button class="btn btn-outline-danger btn-sm mt-3 text-start" @click="logout">Logout</button>
+        </nav>
+      </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="top-bar">
-        <h1>My Pantry</h1>
-        <button class="add-btn" @click="showModal = true">+ Add Item</button>
-      </div>
-
-      <p v-if="loading">Loading...</p>
-
-      <div class="items" v-else>
-        <div v-if="products.length === 0" class="empty-state">
-          <p>No items in your pantry yet!</p>
+      <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="h3 mb-0">My Pantry</h1>
+          <button class="btn btn-primary" @click="showModal = true">Add Item</button>
         </div>
-        <div class="item-card" v-for="product in products" :key="product.id">
-          <div class="item-info">
-            <div>
-              <h3>{{ product.name }}</h3>
-              <p>Expires: {{ product.expiryDate }}</p>
+
+        <p v-if="loading" class="text-muted">Loading...</p>
+
+        <div v-else>
+          <div v-if="products.length === 0" class="pp-card p-4 text-muted mb-3">
+            No active items in your pantry yet.
+          </div>
+
+          <TransitionGroup name="fade-slide" tag="div">
+            <div
+              v-for="product in products"
+              :key="product.id"
+              class="pp-card pp-hover p-3 mb-3 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3"
+            >
+              <div>
+                <h3 class="h6 mb-1">{{ product.name }}</h3>
+                <p class="mb-1 text-muted">
+                  {{ formatQty(product.quantity, product.unit) }} • Expires: {{ product.expiryDate }}
+                </p>
+                <small :class="expiryTextClass(product.expiryDate)">{{ daysUntilExpiry(product.expiryDate) }}</small>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-outline-primary" @click="openEditModal(product)">Edit</button>
+                <button class="btn btn-sm btn-outline-success" @click="markUsed(product.id)">Use</button>
+                <button class="btn btn-sm btn-outline-danger" @click="confirmWaste(product.id)">Waste</button>
+                <button class="btn btn-sm btn-outline-secondary" @click="deleteItem(product.id)">Delete</button>
+              </div>
             </div>
-          </div>
-          <span :class="['time', expiryClass(product.expiryDate)]">
-            {{ daysUntilExpiry(product.expiryDate) }}
-          </span>
-          <button class="delete-btn" @click="deleteItem(product.id)">🗑️</button>
+          </TransitionGroup>
         </div>
-      </div>
 
-      <div class="graph-card">
-        <h3>Weekly Waste Savings</h3>
-        <div class="graph-placeholder">Graph goes here</div>
-      </div>
-    </main>
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-xl-6">
+            <section class="pp-card p-3 p-md-4 h-100">
+              <h2 class="h5 mb-3">Top Wasted Items (30 Days)</h2>
+              <ul v-if="insights.topWasted?.length" class="list-group list-group-flush">
+                <li
+                  v-for="(item, idx) in insights.topWasted"
+                  :key="item.name + idx"
+                  class="list-group-item d-flex justify-content-between align-items-center px-0"
+                >
+                  <span>{{ idx + 1 }}. {{ item.name }}</span>
+                  <span class="badge text-bg-danger rounded-pill">{{ item.count }}</span>
+                </li>
+              </ul>
+              <p v-else class="text-muted mb-0">No wasted items in last 30 days.</p>
+            </section>
+          </div>
 
-    <!-- Add Item Modal -->
-    <div class="modal" v-if="showModal">
-      <div class="modal-content">
-        <span class="close" @click="showModal = false">&times;</span>
-        <h2>Add New Item</h2>
-        <form @submit.prevent="addItem">
-          <div class="form-group">
-            <label>Item Name:</label>
-            <input type="text" v-model="newItem.name" required />
+          <div class="col-12 col-xl-6">
+            <section class="pp-card p-3 p-md-4 h-100">
+              <h2 class="h5 mb-3">Expiring Soon</h2>
+
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge text-bg-danger">1 day: {{ insights.expiringSoon?.in1Day || 0 }}</span>
+                <span class="badge text-bg-warning">3 days: {{ insights.expiringSoon?.in3Days || 0 }}</span>
+                <span class="badge text-bg-info">7 days: {{ insights.expiringSoon?.in7Days || 0 }}</span>
+              </div>
+
+              <ul v-if="insights.expiringSoon?.items?.length" class="list-group list-group-flush">
+                <li
+                  v-for="item in insights.expiringSoon.items"
+                  :key="item.id"
+                  class="list-group-item d-flex justify-content-between align-items-center px-0"
+                >
+                  <span>{{ item.name }}</span>
+                  <small class="text-muted">{{ item.daysLeft }} day(s)</small>
+                </li>
+              </ul>
+
+              <p v-else class="text-muted mb-0">No active items expiring in next 7 days.</p>
+            </section>
           </div>
-          <div class="form-group">
-            <label>Expiry Date:</label>
-            <input type="date" v-model="newItem.expiryDate" required />
+        </div>
+
+        <div class="pp-card p-3 p-md-4 mt-4" style="height: 500px;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Weekly Waste Insights (Last 4 Weeks)</h2>
+            <span class="badge text-bg-light">Waste Rate: {{ wasteRatePercent }}</span>
           </div>
-          <button type="submit" class="submit-btn">Add Item</button>
-        </form>
+
+          <Bar v-if="analytics.labels.length" :data="chartData" :options="chartOptions" />
+          <div v-else class="text-muted">No analytics data yet.</div>
+        </div>
+
+        <div
+          v-if="undo.visible"
+          class="position-fixed bottom-0 end-0 m-4 p-3 rounded bg-dark text-white d-flex gap-2 align-items-center"
+          style="z-index: 1200;"
+        >
+          Marked as {{ undo.action }}.
+          <button class="btn btn-sm btn-light" @click="undoLastAction">Undo</button>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal fade" :class="{ show: showWasteConfirmModal }" :style="{ display: showWasteConfirmModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Confirm Waste</h5>
+            <button type="button" class="btn-close" @click="closeWasteConfirm"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0">Mark this item as wasted? You can still undo from History.</p>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-outline-secondary" @click="closeWasteConfirm">Cancel</button>
+            <button type="button" class="btn btn-danger" @click="confirmWasteNow">Mark as Wasted</button>
+          </div>
+        </div>
       </div>
     </div>
+    <div v-if="showWasteConfirmModal" class="modal-backdrop fade show"></div>
+
+    <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Edit Item</h5>
+            <button type="button" class="btn-close" @click="showEditModal = false"></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="saveEdit">
+              <div class="mb-3">
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-control" v-model="editForm.name" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" class="form-control" v-model="editForm.expiryDate" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Quantity</label>
+                <input type="number" min="0" step="0.1" class="form-control" v-model.number="editForm.quantity" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Unit</label>
+                <input type="text" maxlength="20" class="form-control" v-model="editForm.unit" required />
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showEditModal" class="modal-backdrop fade show"></div>
+
+    <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content pp-card border-0">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Add New Item</h5>
+            <button type="button" class="btn-close" @click="showModal = false"></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="addItem">
+              <div class="mb-3">
+                <label class="form-label">Item Name</label>
+                <input class="form-control" type="text" v-model="newItem.name" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Quantity</label>
+                <input class="form-control" type="number" min="0" step="0.1" v-model.number="newItem.quantity" required />
+                <small class="text-muted">{{ formatQty(newItem.quantity, newItem.unit) }} • Expires: {{ newItem.expiryDate || '-' }}</small>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Unit</label>
+                <input class="form-control" type="text" maxlength="20" v-model="newItem.unit" placeholder="item, kg, L..." required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Expiry Date</label>
+                <input class="form-control" type="date" v-model="newItem.expiryDate" required />
+              </div>
+
+              <button class="btn btn-primary w-100" type="submit">Add Item</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showModal" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { auth } from '../firebaseConfig.js';
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed } from 'vue'
+import { auth } from '../firebaseConfig.js'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { useRouter } from 'vue-router'
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
+import { authenticatedFetch } from '../services/api.js'
 
-const router = useRouter();
-const products = ref([]);
-const loading = ref(true);
-const showModal = ref(false);
-const newItem = ref({ name: '', expiryDate: '' });
-const userId = ref(null);
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+
+const showEditModal = ref(false)
+const editingItem = ref(null)
+const editForm = ref({ name: '', expiryDate: '', quantity: 1, unit: 'item' })
+
+const router = useRouter()
+const products = ref([])
+const loading = ref(true)
+const showModal = ref(false)
+const newItem = ref({ name: '', expiryDate: '', quantity: 1, unit: 'item' })
+const userId = ref(null)
+const showWasteConfirmModal = ref(false)
+const pendingWasteId = ref(null)
+
+const analytics = ref({ labels: [], used: [], wasted: [], wasteRate: 0 })
+const undo = ref({ visible: false, productId: null, action: '', timer: null })
+const insights = ref({
+  topWasted: [],
+  expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] }
+})
+
+const chartData = computed(() => ({
+  labels: analytics.value.labels,
+  datasets: [
+    { label: 'Used', data: analytics.value.used, backgroundColor: '#16a34a' },
+    { label: 'Wasted', data: analytics.value.wasted, backgroundColor: '#dc2626' }
+  ]
+}))
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { position: 'top' } }
+}
+
+const wasteRatePercent = computed(() => `${Math.round((analytics.value.wasteRate || 0) * 100)}%`)
 
 onMounted(() => {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      userId.value = user.uid;
-      fetchProducts();
-    } else {
-      router.push('/login');
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      router.push('/login')
+      return
     }
-  });
-});
+
+    userId.value = user.uid
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  })
+})
 
 async function fetchProducts() {
-  loading.value = true;
-  const res = await fetch(
-    `https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`
-  );
-  const data = await res.json();
-  products.value = data.products;
-  loading.value = false;
+  loading.value = true
+  try {
+    const res = await authenticatedFetch(`https://getproducts-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const data = await res.json()
+    products.value = data.products || []
+  } catch (err) {
+    console.error('fetchProducts error:', err)
+    products.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchInsights() {
+  try {
+    const res = await authenticatedFetch(`https://getinsightssummary-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
+    const data = await res.json()
+
+    insights.value = data.success
+      ? data
+      : { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
+  } catch (err) {
+    console.error('fetchInsights error:', err)
+    insights.value = { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
+  }
+}
+
+async function fetchAnalytics() {
+  try {
+    const res = await authenticatedFetch(`https://getweeklyanalytics-moat6vqvca-uc.a.run.app?userId=${userId.value}&weeks=4`)
+    const data = await res.json()
+    analytics.value = data.success ? data : { labels: [], used: [], wasted: [], wasteRate: 0 }
+  } catch (err) {
+    console.error('fetchAnalytics error:', err)
+    analytics.value = { labels: [], used: [], wasted: [], wasteRate: 0 }
+  }
 }
 
 async function addItem() {
-  await fetch('https://addproduct-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId: userId.value,
-      name: newItem.value.name,
-      expiryDate: newItem.value.expiryDate,
-      expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
-      status: 'active'
-    })
-  });
+  if (!newItem.value.name || !newItem.value.expiryDate) return
 
-  newItem.value = { name: '', expiryDate: '' };
-  showModal.value = false;
-  await fetchProducts();
+  try {
+    await authenticatedFetch('https://addproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId.value,
+        name: newItem.value.name,
+        expiryDate: newItem.value.expiryDate,
+        expiryTimestampUtc: new Date(newItem.value.expiryDate).toISOString(),
+        status: 'active',
+        quantity: newItem.value.quantity,
+        unit: newItem.value.unit
+      })
+    })
+
+    newItem.value = { name: '', expiryDate: '', quantity: 1, unit: 'item' }
+    showModal.value = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('addItem error:', err)
+    alert('Failed to add item')
+  }
 }
 
 async function deleteItem(productId) {
-  await fetch('https://deleteproduct-moat6vqvca-uc.a.run.app', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productId })
-  });
-  await fetchProducts();
+  try {
+    await authenticatedFetch('https://deleteproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId })
+    })
+
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('deleteItem error:', err)
+    alert('Failed to delete item')
+  }
 }
 
-async function logout() {
-  await signOut(auth);
-  router.push('/login');
+async function markUsed(productId) {
+  await updateStatus(productId, 'used')
+}
+
+function confirmWaste(productId) {
+  pendingWasteId.value = productId
+  showWasteConfirmModal.value = true
+}
+
+function closeWasteConfirm() {
+  showWasteConfirmModal.value = false
+  pendingWasteId.value = null
+}
+
+async function confirmWasteNow() {
+  if (!pendingWasteId.value) return
+  const productId = pendingWasteId.value
+  closeWasteConfirm()
+  await updateStatus(productId, 'wasted')
+}
+
+async function updateStatus(productId, status) {
+  try {
+    await authenticatedFetch('https://updateproductstatus-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, status })
+    })
+
+    showUndo(productId, status)
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('updateStatus error:', err)
+    alert('Failed to update status')
+  }
+}
+
+function showUndo(productId, action) {
+  if (undo.value.timer) clearTimeout(undo.value.timer)
+
+  undo.value.visible = true
+  undo.value.productId = productId
+  undo.value.action = action
+  undo.value.timer = setTimeout(() => {
+    undo.value.visible = false
+  }, 8000)
+}
+
+async function undoLastAction() {
+  if (!undo.value.productId) return
+
+  try {
+    await authenticatedFetch('https://undoproductstatus-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId: undo.value.productId })
+    })
+
+    clearTimeout(undo.value.timer)
+    undo.value.visible = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('undoLastAction error:', err)
+    alert('Failed to undo')
+  }
+}
+
+function formatQty(quantity, unit) {
+  const q = Number(quantity)
+  const safeQ = Number.isFinite(q) ? q : 1
+  const safeUnit = (unit || 'item').toString()
+  return `${safeQ} ${safeUnit}`
+}
+
+function openEditModal(product) {
+  editingItem.value = product
+  editForm.value = {
+    name: product.name || '',
+    expiryDate: product.expiryDate || '',
+    quantity: Number.isFinite(Number(product.quantity)) ? Number(product.quantity) : 1,
+    unit: product.unit || 'item'
+  }
+  showEditModal.value = true
+}
+
+async function saveEdit() {
+  if (!editingItem.value?.id) return
+
+  try {
+    await authenticatedFetch('https://updateproduct-moat6vqvca-uc.a.run.app', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: editingItem.value.id,
+        name: editForm.value.name,
+        expiryDate: editForm.value.expiryDate,
+        quantity: editForm.value.quantity,
+        unit: editForm.value.unit
+      })
+    })
+
+    showEditModal.value = false
+    await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
+  } catch (err) {
+    console.error('saveEdit error:', err)
+    alert('Failed to save changes')
+  }
 }
 
 function daysUntilExpiry(expiryDate) {
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-  const diffTime = expiry - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'Expired';
-  if (diffDays === 0) return 'Expires today';
-  if (diffDays === 1) return '1 day left';
-  return `${diffDays} days left`;
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return 'Expired'
+  if (diffDays === 0) return 'Expires today'
+  if (diffDays === 1) return '1 day left'
+  return `${diffDays} days left`
 }
 
-function expiryClass(expiryDate) {
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'critical';
-  if (diffDays <= 2) return 'warn';
-  return 'okay';
+function expiryTextClass(expiryDate) {
+  const today = new Date()
+  const expiry = new Date(expiryDate)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) return 'text-danger'
+  if (diffDays <= 2) return 'text-warning'
+  return 'text-success'
+}
+
+async function logout() {
+  await signOut(auth)
+  router.push('/login')
 }
 </script>
 
 <style scoped>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Inter", sans-serif;
+.pp-shell {
+  min-height: 100vh;
+  background: #f8fafc;
 }
 
-body {
-    background: #edf2f7;
+.pp-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
 }
 
-.container {
-    display: flex;
+.pp-logo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.sidebar {
-    width: 250px;
-    background: white;
-    height: 100vh;
-    padding: 25px;
-    border-right: 1px solid #e0e0e0;
+.pp-nav-link {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.15s ease;
 }
 
-.logo {
-    margin-bottom: 30px;
-    font-size: 22px;
-    font-weight: 600;
+.pp-nav-link:hover,
+.pp-nav-link.active {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
-.sidebar nav a {
-    display: block;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #555;
-    cursor: pointer;
-    text-decoration: none;
-    transition: 0.2s;
+.pp-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
 }
 
-.sidebar nav a:hover,
-.sidebar nav a.active {
-    color: #2c7a7b;
-    font-weight: bold;
+.pp-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.main {
-    flex: 1;
-    padding: 40px;
+.pp-hover:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
 }
 
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.22s ease;
 }
 
-.add-btn {
-    padding: 10px 20px;
-    background: #2f855a;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
-.items {
-    margin-top: 20px;
-}
-
-.item-card {
-    background: white;
-    padding: 15px 20px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.item-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.item-info {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.item-card h3 {
-    font-size: 18px;
-}
-
-.item-card p {
-    font-size: 14px;
-    color: #777;
-}
-
-.time {
-    font-size: 20px;
-    font-weight: bold;
-}
-
-.warn {
-    color: #e53e3e;
-}
-
-.okay {
-    color: #dd6b20;
-}
-
-.graph-card {
-    margin-top: 30px;
-    background: white;
-    padding: 25px;
-    border-radius: 16px;
-}
-
-.graph-placeholder {
-    margin-top: 20px;
-    height: 250px;
-    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #718096;
-    font-size: 16px;
-    border: 2px dashed #cbd5e0;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: #94a3b8;
-    background: white;
-    border-radius: 12px;
-    margin-top: 20px;
-}
-
-.modal {
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 5% auto;
-    padding: 30px;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 500px;
-    position: relative;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-content h2 {
-    margin-bottom: 20px;
-    color: #2d3748;
-    font-size: 24px;
-}
-
-.close {
-    position: absolute;
-    right: 25px;
-    top: 20px;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #a0aec0;
-}
-
-.close:hover {
-    color: #4a5568;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #4a5568;
-    font-size: 14px;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 15px;
-    background: #f8fafc;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #2f855a;
-    background: white;
-}
-
-.submit-btn {
-    background: #2f855a;
-    color: white;
-    padding: 14px 20px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    width: 100%;
-    font-size: 16px;
-    font-weight: 600;
-    margin-top: 10px;
-}
-
-.submit-btn:hover {
-    background: #276749;
-}
-
-.logout-btn {
-    display: block;
-    width: 100%;
-    padding: 14px 0;
-    font-size: 16px;
-    color: #e53e3e;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    margin-top: 20px;
-}
-
-.logout-btn:hover {
-    font-weight: bold;
-}
-
-.delete-btn {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.item-card:hover .delete-btn {
-    opacity: 1;
+@media (max-width: 767px) {
+  .pp-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
 }
 </style>
