@@ -4,17 +4,17 @@ A pantry management web app built with Vue 3 and Firebase. Track food items, get
 
 ## Live Demo
 
-[PantryPlan](https://your-firebase-url.web.app)
+[PantryPlan](https://pantryplan-1f075.web.app/register)
 
 ## Features
 
-- **Pantry Tracking** — Add, edit, and delete pantry items with quantity, unit, and expiry date
-- **Expiry Alerts** — Color-coded expiry indicators and daily email notifications for items expiring within 3 days
-- **Waste Insights** — Weekly bar chart of used vs. wasted items with waste rate tracking
-- **Top Wasted Items** — See which items you waste most over the last 30 days
-- **Recipe Suggestions** — Get recipe ideas based on your current pantry
-- **History** — View all used, wasted, and deleted items with undo support
-- **Auth** — Firebase Authentication with protected routes
+- **Pantry Tracking**: Add, edit, and delete pantry items with quantity, unit, and expiry date
+- **Expiry Alerts**: Color-coded expiry indicators and daily email notifications for items expiring within 3 days
+- **Waste Insights**: Weekly bar chart of used vs. wasted items with waste rate tracking
+- **Top Wasted Items**: See which items you waste most over the last 30 days
+- **Recipe Suggestions**: Get recipe ideas based on your current pantry
+- **History**: View all used, wasted, and deleted items with undo support
+- **Auth**: Firebase Authentication with protected routes
 
 ## Tech Stack
 
@@ -29,13 +29,16 @@ A pantry management web app built with Vue 3 and Firebase. Track food items, get
 
 ## Screenshots
 
-| Dashboard | Recipes |
+### Dashboard
+| | |
 |---|---|
-| ![Dashboard](./screenshots/dashboard.png) | ![Recipes](./screenshots/recipes.png) |
+| ![Dashboard](./images/dashboard1.png) | ![Dashboard](./images/dashboard2.png) |
 
-| History | Settings |
-|---|---|
-| ![History](./screenshots/history.png) | ![Settings](./screenshots/settings.png) |
+### Pages
+| Recipes | History | Settings |
+|---|---|---|
+| ![Recipes](./images/recipes.png) | ![History](./images/history.png) | ![Settings](./images/settings.png) |
+
 
 ## Deployment
 
@@ -66,6 +69,7 @@ npm run deploy:all
 
 ```
 pantry_plan/
+├── images/
 ├── functions/          # Firebase Cloud Functions
 ├── src/
 │   ├── pages/          # Route-level Vue components
