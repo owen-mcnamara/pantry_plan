@@ -9,6 +9,7 @@ A pantry management web app built with Vue 3 and Firebase. Track food items, get
 ## Features
 
 - **Pantry Tracking**: Add, edit, and delete pantry items with quantity, unit, and expiry date
+- **Expiry Date Scanner**: Scan product expiry dates using your camera — powered by Google Cloud Vision API
 - **Expiry Alerts**: Color-coded expiry indicators and daily email notifications for items expiring within 3 days
 - **Waste Insights**: Weekly bar chart of used vs. wasted items with waste rate tracking
 - **Top Wasted Items**: See which items you waste most over the last 30 days
@@ -25,6 +26,7 @@ A pantry management web app built with Vue 3 and Firebase. Track food items, get
 | Database | Firestore |
 | Auth | Firebase Authentication |
 | Hosting | Firebase Hosting |
+| OCR | Google Cloud Vision API |
 | CI/CD | GitHub Actions |
 
 ## Screenshots
@@ -64,6 +66,7 @@ npm run deploy:all
 | `getRecipeSuggestions` | Recipe ideas from pantry |
 | `getRecipeDetails` | Full recipe detail |
 | `dailyExpiryCheck` | Scheduled email alerts (every 24h) |
+| `scanExpiry` | 	Scan expiry date from image using Google Cloud Vision API |
 
 ## Project Structure
 

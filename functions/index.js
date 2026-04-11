@@ -6,6 +6,8 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth");
 const nodemailer = require("nodemailer");
+const { GoogleAuth } = require('google-auth-library');
+const fetch = require('node-fetch');
 
 const EMAIL_USER = defineSecret("EMAIL_USER");
 const EMAIL_PASS = defineSecret("EMAIL_PASS");
@@ -15,13 +17,11 @@ setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 const db = getFirestore();
 const adminAuth = getAuth();
 
-// Middleware to verify Firebase Auth token
 async function verifyAuth(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     throw new Error("Unauthorized: Missing token");
   }
-  
   const token = authHeader.split("Bearer ")[1];
   const decodedToken = await adminAuth.verifyIdToken(token);
   return decodedToken.uid;
@@ -77,7 +77,7 @@ exports.getProducts = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { userId } = req.query;
-    
+
     if (authenticatedUid !== userId) {
       res.status(403).json({ success: false, message: "Forbidden" });
       return;
@@ -109,7 +109,7 @@ exports.deleteProduct = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { productId } = req.body || {};
-    
+
     if (!productId) {
       res.status(400).json({ success: false, message: "Missing productId" });
       return;
@@ -143,7 +143,7 @@ exports.updateProduct = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { productId, name, expiryDate, quantity, unit } = req.body || {};
-    
+
     if (!productId) {
       res.status(400).json({ success: false, message: "Missing productId" });
       return;
@@ -199,7 +199,7 @@ exports.updateProductStatus = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { productId, status } = req.body || {};
-    
+
     if (!productId || !["used", "wasted"].includes(status)) {
       res.status(400).json({ success: false, message: "Invalid payload" });
       return;
@@ -235,10 +235,10 @@ exports.undoProductStatus = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { productId } = req.body || {};
-    
-    if (!productId) { 
-      res.status(400).json({ success: false, message: "Missing productId" }); 
-      return; 
+
+    if (!productId) {
+      res.status(400).json({ success: false, message: "Missing productId" });
+      return;
     }
 
     const productDoc = await db.collection("products").doc(productId).get();
@@ -270,15 +270,15 @@ exports.getHistory = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { userId, limit = 50 } = req.query;
-    
+
     if (authenticatedUid !== userId) {
       res.status(403).json({ success: false, message: "Forbidden" });
       return;
     }
 
-    if (!userId) { 
-      res.status(400).json({ success: false, message: "Missing userId" }); 
-      return; 
+    if (!userId) {
+      res.status(400).json({ success: false, message: "Missing userId" });
+      return;
     }
 
     const snapshot = await db.collection("products")
@@ -429,15 +429,15 @@ exports.getInsightsSummary = onRequest({ cors: true }, async (req, res) => {
   try {
     const authenticatedUid = await verifyAuth(req);
     const { userId } = req.query;
-    
+
     if (authenticatedUid !== userId) {
       res.status(403).json({ success: false, message: "Forbidden" });
       return;
     }
 
-    if (!userId) { 
-      res.status(400).json({ success: false, message: "Missing userId" }); 
-      return; 
+    if (!userId) {
+      res.status(400).json({ success: false, message: "Missing userId" });
+      return;
     }
 
     const snapshot = await db.collection("products").where("userId", "==", userId).get();
@@ -486,6 +486,53 @@ exports.getInsightsSummary = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
+exports.scanExpiry = onRequest({ cors: true }, async (req, res) => {
+  try {
+    const { imageBase64 } = req.body
+    if (!imageBase64) return res.status(400).json({ error: 'No image' })
+
+    const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' })
+    const token = await auth.getAccessToken()
+
+    const response = await fetch('https://vision.googleapis.com/v1/images:annotate', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: [{ image: { content: imageBase64 }, features: [{ type: 'TEXT_DETECTION' }] }]
+      })
+    })
+
+    const data = await response.json()
+    const text = data.responses?.[0]?.fullTextAnnotation?.text || ''
+
+    const patterns = [
+      /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/,
+      /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{2})/,
+      /(\d{1,2})[\/\-\.](\d{4})/,
+      /(\d{1,2})[\/\-\.](\d{2})/,
+    ]
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern)
+      if (!match) continue
+      if (match.length === 4) {
+        let [, day, month, year] = match
+        if (year.length === 2) year = '20' + year
+        return res.json({ date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` })
+      } else {
+        let [, month, year] = match
+        if (year.length === 2) year = '20' + year
+        return res.json({ date: `${year}-${month.padStart(2, '0')}-01` })
+      }
+    }
+
+    res.json({ date: null, rawText: text })
+  } catch (err) {
+    console.error('scanExpiry error:', err)
+    res.status(500).json({ error: 'Internal error' })
+  }
+})
+
 function startOfWeek(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -506,7 +553,6 @@ function weekLabel(date) {
   return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 }
 
-// Export recipe functions
 const recipes = require('./recipes');
 exports.getRecipeSuggestions = recipes.getRecipeSuggestions;
 exports.getRecipeDetails = recipes.getRecipeDetails;

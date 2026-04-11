@@ -114,6 +114,7 @@
       </main>
     </div>
 
+    <!-- Waste Confirm Modal -->
     <div class="modal fade" :class="{ show: showWasteConfirmModal }" :style="{ display: showWasteConfirmModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content pp-card border-0">
@@ -133,6 +134,7 @@
     </div>
     <div v-if="showWasteConfirmModal" class="modal-backdrop fade show"></div>
 
+    <!-- Edit Modal -->
     <div class="modal fade" :class="{ show: showEditModal }" :style="{ display: showEditModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content pp-card border-0">
@@ -170,12 +172,13 @@
     </div>
     <div v-if="showEditModal" class="modal-backdrop fade show"></div>
 
+    <!-- Add Item Modal -->
     <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content pp-card border-0">
           <div class="modal-header border-0 pb-0">
             <h5 class="modal-title">Add New Item</h5>
-            <button type="button" class="btn-close" @click="showModal = false"></button>
+            <button type="button" class="btn-close" @click="closeAddModal"></button>
           </div>
           <div class="modal-body">
             <form @submit.prevent="addItem">
@@ -197,10 +200,25 @@
 
               <div class="mb-3">
                 <label class="form-label">Expiry Date</label>
-                <input class="form-control" type="date" v-model="newItem.expiryDate" required />
+                <div class="input-group">
+                  <input class="form-control" type="date" v-model="newItem.expiryDate" required />
+                  <button type="button" class="btn btn-outline-secondary" @click="startScanner" title="Scan with camera">
+                    <i class="bi bi-camera"></i>
+                  </button>
+                </div>
               </div>
 
-              <button class="btn btn-primary w-100" type="submit">Add Item</button>
+              <div v-if="showScanner" class="mt-3">
+                <video ref="videoEl" autoplay playsinline class="w-100 rounded" style="max-height:200px;object-fit:cover;"></video>
+                <div class="d-flex gap-2 mt-2">
+                  <button type="button" class="btn btn-success btn-sm" @click="captureAndScan">Scan</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="stopScanner">Cancel</button>
+                </div>
+                <p v-if="scanStatus" class="mt-2 small" :class="scanStatus.ok ? 'text-success' : 'text-danger'">{{ scanStatus.msg }}</p>
+              </div>
+              <canvas ref="canvasEl" style="display:none;"></canvas>
+
+              <button class="btn btn-primary w-100 mt-2" type="submit">Add Item</button>
             </form>
           </div>
         </div>
@@ -211,13 +229,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { auth } from '../firebaseConfig.js'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 import { Bar } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import { authenticatedFetch } from '../services/api.js'
+import { scanExpiryDate } from '../services/useOcrScanner.js'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
@@ -241,6 +260,12 @@ const insights = ref({
   expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] }
 })
 
+const showScanner = ref(false)
+const scanStatus = ref(null)
+const videoEl = ref(null)
+const canvasEl = ref(null)
+let mediaStream = null
+
 const chartData = computed(() => ({
   labels: analytics.value.labels,
   datasets: [
@@ -263,7 +288,6 @@ onMounted(() => {
       router.push('/login')
       return
     }
-
     userId.value = user.uid
     await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
   })
@@ -287,7 +311,6 @@ async function fetchInsights() {
   try {
     const res = await authenticatedFetch(`https://getinsightssummary-moat6vqvca-uc.a.run.app?userId=${userId.value}`)
     const data = await res.json()
-
     insights.value = data.success
       ? data
       : { topWasted: [], expiringSoon: { in1Day: 0, in3Days: 0, in7Days: 0, items: [] } }
@@ -342,7 +365,6 @@ async function deleteItem(productId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId })
     })
-
     await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
   } catch (err) {
     console.error('deleteItem error:', err)
@@ -378,7 +400,6 @@ async function updateStatus(productId, status) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId, status })
     })
-
     showUndo(productId, status)
     await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
   } catch (err) {
@@ -389,25 +410,20 @@ async function updateStatus(productId, status) {
 
 function showUndo(productId, action) {
   if (undo.value.timer) clearTimeout(undo.value.timer)
-
   undo.value.visible = true
   undo.value.productId = productId
   undo.value.action = action
-  undo.value.timer = setTimeout(() => {
-    undo.value.visible = false
-  }, 8000)
+  undo.value.timer = setTimeout(() => { undo.value.visible = false }, 8000)
 }
 
 async function undoLastAction() {
   if (!undo.value.productId) return
-
   try {
     await authenticatedFetch('https://undoproductstatus-moat6vqvca-uc.a.run.app', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId: undo.value.productId })
     })
-
     clearTimeout(undo.value.timer)
     undo.value.visible = false
     await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
@@ -437,7 +453,6 @@ function openEditModal(product) {
 
 async function saveEdit() {
   if (!editingItem.value?.id) return
-
   try {
     await authenticatedFetch('https://updateproduct-moat6vqvca-uc.a.run.app', {
       method: 'POST',
@@ -450,7 +465,6 @@ async function saveEdit() {
         unit: editForm.value.unit
       })
     })
-
     showEditModal.value = false
     await Promise.all([fetchProducts(), fetchAnalytics(), fetchInsights()])
   } catch (err) {
@@ -463,7 +477,6 @@ function daysUntilExpiry(expiryDate) {
   const today = new Date()
   const expiry = new Date(expiryDate)
   const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
-
   if (diffDays < 0) return 'Expired'
   if (diffDays === 0) return 'Expires today'
   if (diffDays === 1) return '1 day left'
@@ -474,10 +487,52 @@ function expiryTextClass(expiryDate) {
   const today = new Date()
   const expiry = new Date(expiryDate)
   const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
-
   if (diffDays < 0) return 'text-danger'
   if (diffDays <= 2) return 'text-warning'
   return 'text-success'
+}
+
+async function startScanner() {
+  showScanner.value = true
+  scanStatus.value = null
+  await nextTick()
+  mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+  videoEl.value.srcObject = mediaStream
+}
+
+async function captureAndScan() {
+  const video = videoEl.value
+  const canvas = canvasEl.value
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0)
+
+  if (canvas.width === 0 || canvas.height === 0) {
+    scanStatus.value = { ok: false, msg: 'Camera not ready, try again.' }
+    return
+  }
+
+  scanStatus.value = { ok: true, msg: 'Scanning...' }
+  const date = await scanExpiryDate(canvas)
+
+  if (date) {
+    newItem.value.expiryDate = date
+    await nextTick()
+    scanStatus.value = { ok: true, msg: `Found: ${date}` }
+    stopScanner()
+  } else {
+    scanStatus.value = { ok: false, msg: 'No date found. Try again.' }
+  }
+}
+
+function stopScanner() {
+  mediaStream?.getTracks().forEach(t => t.stop())
+  showScanner.value = false
+}
+
+function closeAddModal() {
+  stopScanner()
+  showModal.value = false
 }
 
 async function logout() {
