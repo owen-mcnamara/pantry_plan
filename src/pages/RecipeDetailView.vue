@@ -13,7 +13,7 @@
       </aside>
 
       <main class="col-12 col-md-9 col-xl-10 p-3 p-md-4">
-        <button class="btn btn-link ps-0 mb-3" @click="router.push('/recipes')">← Back to Recipes</button>
+        <button class="btn btn-link ps-0 mb-3" @click="router.push('/recipes')">Back to Recipes</button>
 
         <div v-if="loading" class="text-muted">Loading...</div>
 
