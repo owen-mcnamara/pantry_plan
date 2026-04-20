@@ -30,11 +30,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install functions dependencies
+        run: npm ci
+        working-directory: functions
+
       - name: Run Linter
-        run: npm run lint || echo "No linter configured, skipping..."
+        run: npx eslint . --ext .js --max-warnings=0
+        working-directory: functions
 
       - name: Run Tests
-        run: npm test || echo "No tests configured, skipping..."
+        run: npm test
+        working-directory: functions
 
       - name: Build Vue app
         run: npm run build
