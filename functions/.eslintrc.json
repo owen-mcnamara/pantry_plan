@@ -6,5 +6,16 @@
   "extends": "eslint:recommended",
   "parserOptions": {
     "ecmaVersion": 2021
-  }
+  },
+  "rules": {
+    "no-useless-escape": "off"
+  },
+  "overrides": [
+    {
+      "files": ["*.test.js"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
 }
